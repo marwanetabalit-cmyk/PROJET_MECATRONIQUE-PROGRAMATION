@@ -1,0 +1,30 @@
+#pragma once
+#include <Arduino.h>
+#include "safety.h"
+#include "ultrasons.h"
+#include "drive.h"
+#include "servos_ctrl.h"
+
+enum class RobotState {
+    WAIT_START,
+    RUN_FORWARD,
+    AVOID_OBSTACLE,
+    EMERGENCY_STOP
+};
+
+class StrategyManager {
+public:
+    void init();
+    void update(const SafetySystem& safety,
+                const DistanceReadings& distances,
+                DriveBase& drive,
+                ServoController& servos);
+
+    RobotState getState() const;
+
+private:
+    RobotState state = RobotState::WAIT_START;
+    unsigned long stateStartMs = 0;
+
+    void changeState(RobotState newState);
+};
