@@ -4,8 +4,9 @@ events:
   -
     kind: "message-v1"
     backtrace:
-      - "C:/Users/z004n98h/.pico-sdk/cmake/v3.31.5/share/cmake-3.31/Modules/CMakeDetermineSystem.cmake:205 (message)"
+      - "C:/Users/z004n98h/.pico-sdk/cmake/v3.31.5/share/cmake-3.31/Modules/CMakeDetermineSystem.cmake:200 (message)"
       - "CMakeLists.txt:44 (project)"
     message: |
-      The system is: Windows - 10.0.22631 - AMD64
+      The target system is: PICO -  - cortex-m33
+      The host system is: Windows - 10.0.22631 - AMD64
 ...
