@@ -10,8 +10,10 @@ void StrategyManager::init() {
 }
 
 void StrategyManager::changeState(RobotState newState) {
-    state = newState;
-    stateStartMs = millis();
+    if (state != newState) {
+        state = newState;
+        stateStartMs = millis();
+    }
 }
 
 RobotState StrategyManager::getState() const {
@@ -56,7 +58,7 @@ void StrategyManager::coreUpdate(bool startPressed,
         return;
     }
 
-    if (matchStartMs != 0 && millis() - matchStartMs >= MATCH_DURATION_MS) {
+    if (matchStartMs != 0 && (millis() - matchStartMs >= MATCH_DURATION_MS)) {
         drive.stop();
         changeState(RobotState::END_MATCH);
         return;
