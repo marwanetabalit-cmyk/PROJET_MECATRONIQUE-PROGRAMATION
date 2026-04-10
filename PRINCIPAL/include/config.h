@@ -4,13 +4,12 @@
 // =========================
 // BROCHES GENERALES
 // =========================
-constexpr uint8_t PIN_START_SWITCH = 13;   // microrupteur de départ
-constexpr uint8_t PIN_ESTOP        = 12;   // arrêt d'urgence
+constexpr uint8_t PIN_START_SWITCH = 27;   // microrupteur de départ
+constexpr uint8_t PIN_ESTOP        = 14;   // arrêt d'urgence logique
 
 // =========================
 // ULTRASONS
-// Adapter selon votre câblage réel
-// Echo -> idéalement avec adaptation de niveau vers 3.3V si nécessaire
+// Echo -> à adapter vers 3.3V avant entrée ESP32
 // =========================
 constexpr uint8_t US_FRONT_TRIG = 33;
 constexpr uint8_t US_FRONT_ECHO = 36;   // input only
@@ -26,11 +25,10 @@ constexpr float SOUND_SPEED_CM_PER_US = 0.0343f;
 
 // =========================
 // DYNAMIXEL
-// Adapter selon le shield / câblage réel
 // =========================
 constexpr uint8_t DXL_RX_PIN  = 16;
 constexpr uint8_t DXL_TX_PIN  = 17;
-constexpr uint8_t DXL_DIR_PIN = 4;
+constexpr uint8_t DXL_DIR_PIN = 23;
 
 constexpr uint8_t DXL_LEFT_ID  = 1;
 constexpr uint8_t DXL_RIGHT_ID = 2;
@@ -38,11 +36,9 @@ constexpr uint8_t DXL_RIGHT_ID = 2;
 constexpr uint32_t DXL_BAUDRATE = 57600;
 constexpr float DXL_PROTOCOL_VERSION = 2.0f;
 
-// Si un moteur est monté inversé mécaniquement, mets true
 constexpr bool LEFT_MOTOR_INVERTED  = false;
 constexpr bool RIGHT_MOTOR_INVERTED = true;
 
-// Vitesses de base en rpm
 constexpr float DRIVE_FORWARD_RPM = 30.0f;
 constexpr float DRIVE_TURN_RPM    = 20.0f;
 
@@ -57,7 +53,6 @@ constexpr uint8_t SERVO_CURSOR_PIN    = 22;
 constexpr int SERVO_MIN_US = 500;
 constexpr int SERVO_MAX_US = 2500;
 
-// Angles à ajuster après tests réels
 constexpr int LIFT_DOWN_ANGLE   = 20;
 constexpr int LIFT_UP_ANGLE     = 110;
 
