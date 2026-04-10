@@ -1,9 +1,12 @@
 #include "strategy.h"
 #include "config.h"
 
+constexpr unsigned long MATCH_DURATION_MS = 100000;
+
 void StrategyManager::init() {
     state = RobotState::WAIT_START;
     stateStartMs = millis();
+    matchStartMs = 0;
 }
 
 void StrategyManager::changeState(RobotState newState) {
@@ -19,18 +22,51 @@ void StrategyManager::update(const SafetySystem& safety,
                              const DistanceReadings& distances,
                              DriveBase& drive,
                              ServoController& servos) {
-    (void)servos; // pas encore utilisé dans cette première stratégie
+    coreUpdate(
+        safety.isStartPressed(),
+        safety.isEStopPressed(),
+        distances,
+        drive,
+        servos
+    );
+}
 
-    if (safety.isEStopPressed()) {
+void StrategyManager::updateSimulation(const SimInputs& sim,
+                                       DriveBase& drive,
+                                       ServoController& servos) {
+    coreUpdate(
+        sim.startPressed,
+        sim.eStopPressed,
+        sim.distances,
+        drive,
+        servos
+    );
+}
+
+void StrategyManager::coreUpdate(bool startPressed,
+                                 bool eStopPressed,
+                                 const DistanceReadings& distances,
+                                 DriveBase& drive,
+                                 ServoController& servos) {
+    (void)servos;
+
+    if (eStopPressed) {
         drive.stop();
         changeState(RobotState::EMERGENCY_STOP);
+        return;
+    }
+
+    if (matchStartMs != 0 && millis() - matchStartMs >= MATCH_DURATION_MS) {
+        drive.stop();
+        changeState(RobotState::END_MATCH);
         return;
     }
 
     switch (state) {
         case RobotState::WAIT_START:
             drive.stop();
-            if (safety.isStartPressed()) {
+            if (startPressed) {
+                matchStartMs = millis();
                 changeState(RobotState::RUN_FORWARD);
             }
             break;
@@ -50,7 +86,6 @@ void StrategyManager::update(const SafetySystem& safety,
             if (elapsed < AVOID_STOP_MS) {
                 drive.stop();
             } else if (elapsed < (AVOID_STOP_MS + AVOID_TURN_MS)) {
-                // exemple simple : tourne à droite
                 drive.rotateRight(DRIVE_TURN_RPM);
             } else {
                 changeState(RobotState::RUN_FORWARD);
@@ -59,6 +94,10 @@ void StrategyManager::update(const SafetySystem& safety,
         }
 
         case RobotState::EMERGENCY_STOP:
+            drive.stop();
+            break;
+
+        case RobotState::END_MATCH:
             drive.stop();
             break;
     }

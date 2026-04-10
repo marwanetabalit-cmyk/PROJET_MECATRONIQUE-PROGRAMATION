@@ -25,6 +25,13 @@ public:
 private:
     RobotState state = RobotState::WAIT_START;
     unsigned long stateStartMs = 0;
+    unsigned long matchStartMs = 0;
 
     void changeState(RobotState newState);
+
+    void coreUpdate(bool startPressed,
+                    bool eStopPressed,
+                    const DistanceReadings& distances,
+                    DriveBase& drive,
+                    ServoController& servos);
 };
