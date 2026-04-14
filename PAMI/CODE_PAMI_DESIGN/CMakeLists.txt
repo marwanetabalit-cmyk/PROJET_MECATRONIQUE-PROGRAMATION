@@ -41,36 +41,35 @@ set(PICO_BOARD pico2_w CACHE STRING "Board type")
 include(pico_sdk_import.cmake)
 
 # ===== PROJECT =====
-project(double_encoder_project C CXX ASM)
+project(code_pami_design C CXX ASM)
 
 pico_sdk_init()
 
 # ===== EXECUTABLE =====
-add_executable(double_encoder_project
+add_executable(code_pami_design
     main.c
     motors.c
     encoders.c
     ultrasound.c
+    servo_motor.c
 )
 
 # ===== PIO =====
-pico_generate_pio_header(double_encoder_project
+pico_generate_pio_header(code_pami_design
     ${CMAKE_CURRENT_LIST_DIR}/quadrature_encoder.pio
 )
 
 # ===== LIBS =====
-target_link_libraries(double_encoder_project
+target_link_libraries(code_pami_design
     pico_stdlib
     hardware_pio
     hardware_gpio
     hardware_pwm
-    hardware_timer
-    hardware_irq
 )
 
 # ===== STDIO =====
-pico_enable_stdio_usb(double_encoder_project 1)
-pico_enable_stdio_uart(double_encoder_project 1)
+pico_enable_stdio_usb(code_pami_design 1)
+pico_enable_stdio_uart(code_pami_design 1)
 
 # ===== OUTPUTS =====
-pico_add_extra_outputs(double_encoder_project)
+pico_add_extra_outputs(code_pami_design)
