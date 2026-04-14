@@ -1,28 +1,77 @@
-#pragma once
-#include <Arduino.h>
-#include <ESP32Servo.h>
+#include "servos_ctrl.h"
+#include "config.h"
 
-class ServoController {
-public:
-    void init();
+void ServoController::init() {
+    servoLift.setPeriodHertz(50);
+    servoGrip.setPeriodHertz(50);
+    servoSplit.setPeriodHertz(50);
+    servoCursor.setPeriodHertz(50);
 
-    void liftDown();
-    void liftUp();
+    servoLift.attach(SERVO_LIFT_PIN, SERVO_MIN_US, SERVO_MAX_US);
+    servoGrip.attach(SERVO_GRIP_PIN, SERVO_MIN_US, SERVO_MAX_US);
+    servoSplit.attach(SERVO_SPLIT_PIN, SERVO_MIN_US, SERVO_MAX_US);
+    servoCursor.attach(SERVO_CURSOR_PIN, SERVO_MIN_US, SERVO_MAX_US);
 
-    void gripOpen();
-    void gripClose();
+    liftDown();
+    gripOpen();
+    splitOpen();
+    cursorHome();
+}
 
-    void splitOpen();
-    void splitClose();
+void ServoController::liftDown() {
+    servoLift.write(LIFT_DOWN_ANGLE);
+}
 
-    void cursorHome();
-    void cursorPush();
+void ServoController::liftUp() {
+    servoLift.write(LIFT_UP_ANGLE);
+}
 
-    void demoSequence();
+void ServoController::gripOpen() {
+    servoGrip.write(GRIP_OPEN_ANGLE);
+}
 
-private:
-    Servo servoLift;
-    Servo servoGrip;
-    Servo servoSplit;
-    Servo servoCursor;
-};
+void ServoController::gripClose() {
+    servoGrip.write(GRIP_CLOSE_ANGLE);
+}
+
+void ServoController::splitOpen() {
+    servoSplit.write(SPLIT_OPEN_ANGLE);
+}
+
+void ServoController::splitClose() {
+    servoSplit.write(SPLIT_CLOSE_ANGLE);
+}
+
+void ServoController::cursorHome() {
+    servoCursor.write(CURSOR_HOME_ANGLE);
+}
+
+void ServoController::cursorPush() {
+    servoCursor.write(CURSOR_PUSH_ANGLE);
+}
+
+void ServoController::demoSequence() {
+    splitOpen();
+    delay(500);
+
+    gripOpen();
+    delay(500);
+
+    liftDown();
+    delay(500);
+
+    gripClose();
+    delay(700);
+
+    liftUp();
+    delay(700);
+
+    splitClose();
+    delay(500);
+
+    cursorPush();
+    delay(600);
+
+    cursorHome();
+    delay(600);
+}

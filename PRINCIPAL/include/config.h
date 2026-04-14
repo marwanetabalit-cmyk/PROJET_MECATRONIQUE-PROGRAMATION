@@ -2,6 +2,14 @@
 #include <Arduino.h>
 
 // =========================
+// MODE DE TRAVAIL
+// =========================
+#define MODE_REAL       0
+#define MODE_SIMULATION 1
+
+constexpr int ROBOT_MODE = MODE_SIMULATION;
+
+// =========================
 // BROCHES GENERALES
 // =========================
 constexpr uint8_t PIN_START_SWITCH = 27;   // microrupteur de départ
