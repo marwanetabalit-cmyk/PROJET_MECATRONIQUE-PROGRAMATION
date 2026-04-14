@@ -1,116 +1,171 @@
-#include "strategy.h"  // Inclusion du header pour la classe StrategyManager
-#include "config.h"    // Inclusion du header pour les configurations
+#include "strategy.h"
+#include "config.h"
 
-// Durée maximale du match en millisecondes (100 secondes)
 constexpr unsigned long MATCH_DURATION_MS = 100000;
 
-// Initialisation du gestionnaire de stratégie : met l'état initial à WAIT_START
 void StrategyManager::init() {
-    state = RobotState::WAIT_START;  // État initial : attendre le départ
-    stateStartMs = millis();         // Timestamp du début de l'état actuel
-    matchStartMs = 0;                // Timestamp du début du match, initialisé à 0
+    state = RobotState::WAIT_START;
+    stateStartMs = millis();
+    matchStartMs = 0;
 }
 
-// Change l'état du robot si différent du courant, et met à jour le timestamp
 void StrategyManager::changeState(RobotState newState) {
-    if (state != newState) {          // Vérifie si l'état change
-        state = newState;             // Met à jour l'état
-        stateStartMs = millis();      // Met à jour le timestamp de l'état
+    if (state != newState) {
+        state = newState;
+        stateStartMs = millis();
     }
 }
 
-// Retourne l'état actuel du robot
 RobotState StrategyManager::getState() const {
-    return state;  // Retourne l'état courant
+    return state;
 }
 
-// Met à jour la stratégie en utilisant les données réelles du système de sécurité, distances, etc.
 void StrategyManager::update(const SafetySystem& safety,
                              const DistanceReadings& distances,
                              DriveBase& drive,
-                             ServoController& servos) {
-    coreUpdate(  // Appelle la fonction core commune
-        safety.isStartPressed(),     // Bouton de départ pressé ?
-        safety.isEStopPressed(),     // Bouton d'arrêt d'urgence pressé ?
-        distances,                   // Lectures des distances
-        drive,                       // Contrôleur de conduite
-        servos                       // Contrôleur des servos
+                             ServoController& servos,
+                             ActionManager& actions) {
+    coreUpdate(
+        safety.isStartPressed(),
+        safety.isEStopPressed(),
+        distances,
+        drive,
+        servos,
+        actions
     );
 }
 
-// Met à jour la stratégie en mode simulation avec des entrées simulées
 void StrategyManager::updateSimulation(const SimInputs& sim,
                                        DriveBase& drive,
-                                       ServoController& servos) {
-    coreUpdate(  // Appelle la fonction core commune
-        sim.startPressed,            // Simulation du bouton de départ
-        sim.eStopPressed,            // Simulation du bouton d'arrêt d'urgence
-        sim.distances,               // Distances simulées
-        drive,                       // Contrôleur de conduite
-        servos                       // Contrôleur des servos
+                                       ServoController& servos,
+                                       ActionManager& actions) {
+    coreUpdate(
+        sim.startPressed,
+        sim.eStopPressed,
+        sim.distances,
+        drive,
+        servos,
+        actions
     );
 }
 
-// Fonction centrale de mise à jour de la stratégie, commune aux modes réel et simulation
 void StrategyManager::coreUpdate(bool startPressed,
                                  bool eStopPressed,
                                  const DistanceReadings& distances,
                                  DriveBase& drive,
-                                 ServoController& servos) {
-    (void)servos;  // Supprime l'avertissement de paramètre non utilisé
-
-    // Vérifie l'arrêt d'urgence en priorité
+                                 ServoController& servos,
+                                 ActionManager& actions) {
     if (eStopPressed) {
-        drive.stop();                           // Arrête le robot
-        changeState(RobotState::EMERGENCY_STOP); // Passe à l'état d'urgence
-        return;                                 // Sort de la fonction
+        drive.stop();
+        changeState(RobotState::EMERGENCY_STOP);
+        return;
     }
 
-    // Vérifie si le match est terminé (durée dépassée)
     if (matchStartMs != 0 && (millis() - matchStartMs >= MATCH_DURATION_MS)) {
-        drive.stop();                      // Arrête le robot
-        changeState(RobotState::END_MATCH); // Passe à l'état de fin de match
-        return;                            // Sort de la fonction
+        drive.stop();
+        changeState(RobotState::END_MATCH);
+        return;
     }
 
-    // Machine à états pour gérer le comportement du robot
+    if (state != RobotState::AVOID_OBSTACLE &&
+        state != RobotState::EMERGENCY_STOP &&
+        state != RobotState::END_MATCH &&
+        distances.obstacle) {
+        drive.stop();
+        changeState(RobotState::AVOID_OBSTACLE);
+        return;
+    }
+
     switch (state) {
-        case RobotState::WAIT_START:  // État : attendre le départ
-            drive.stop();             // Le robot est arrêté
-            if (startPressed) {       // Si le bouton de départ est pressé
-                matchStartMs = millis();             // Enregistre le début du match
-                changeState(RobotState::RUN_FORWARD); // Passe à l'état d'avancement
+        case RobotState::WAIT_START:
+            drive.stop();
+            if (startPressed) {
+                matchStartMs = millis();
+                changeState(RobotState::GO_TO_BOX_ZONE);
             }
             break;
 
-        case RobotState::RUN_FORWARD:  // État : avancer
-            if (distances.obstacle) {  // Si un obstacle est détecté
-                drive.stop();                           // Arrête le robot
-                changeState(RobotState::AVOID_OBSTACLE); // Passe à l'état d'évitement
+        case RobotState::GO_TO_BOX_ZONE: {
+            unsigned long elapsed = millis() - stateStartMs;
+            if (elapsed < 2000) {
+                drive.forward(DRIVE_FORWARD_RPM);
             } else {
-                drive.forward(DRIVE_FORWARD_RPM);  // Avance à vitesse normale
-            }
-            break;
-
-        case RobotState::AVOID_OBSTACLE: {  // État : éviter l'obstacle
-            unsigned long elapsed = millis() - stateStartMs;  // Temps écoulé depuis le début de l'état
-
-            if (elapsed < AVOID_STOP_MS) {           // Phase d'arrêt initial
-                drive.stop();                        // Le robot s'arrête
-            } else if (elapsed < (AVOID_STOP_MS + AVOID_TURN_MS)) {  // Phase de rotation
-                drive.rotateRight(DRIVE_TURN_RPM);   // Tourne à droite
-            } else {                                 // Fin de l'évitement
-                changeState(RobotState::RUN_FORWARD); // Retourne à l'avancement
+                drive.stop();
+                changeState(RobotState::PICK_BOX);
             }
             break;
         }
 
-        case RobotState::EMERGENCY_STOP:  // État : arrêt d'urgence
-            drive.stop();                 // Le robot reste arrêté
+        case RobotState::PICK_BOX:
+            drive.stop();
+            actions.pickBox(servos);
+            changeState(RobotState::GO_TO_DROP_ZONE);
             break;
 
-        case RobotState::END_MATCH:  // État : fin du match
-            drive.stop();            // Le robot reste arrêté
+        case RobotState::GO_TO_DROP_ZONE: {
+            unsigned long elapsed = millis() - stateStartMs;
+            if (elapsed < 2000) {
+                drive.forward(DRIVE_FORWARD_RPM);
+            } else {
+                drive.stop();
+                changeState(RobotState::DROP_BOX);
+            }
+            break;
+        }
+
+        case RobotState::DROP_BOX:
+            drive.stop();
+            actions.dropBox(servos);
+            changeState(RobotState::GO_TO_THERMOMETER);
+            break;
+
+        case RobotState::GO_TO_THERMOMETER: {
+            unsigned long elapsed = millis() - stateStartMs;
+            if (elapsed < 1500) {
+                drive.forward(DRIVE_FORWARD_RPM);
+            } else {
+                drive.stop();
+                changeState(RobotState::PUSH_CURSOR);
+            }
+            break;
+        }
+
+        case RobotState::PUSH_CURSOR:
+            drive.stop();
+            actions.pushCursor(servos);
+            changeState(RobotState::RETURN_TO_NEST);
+            break;
+
+        case RobotState::RETURN_TO_NEST: {
+            unsigned long elapsed = millis() - stateStartMs;
+            if (elapsed < 2000) {
+                drive.backward(DRIVE_FORWARD_RPM);
+            } else {
+                drive.stop();
+                actions.returnHome();
+                changeState(RobotState::END_MATCH);
+            }
+            break;
+        }
+
+        case RobotState::AVOID_OBSTACLE: {
+            unsigned long elapsed = millis() - stateStartMs;
+            if (elapsed < AVOID_STOP_MS) {
+                drive.stop();
+            } else if (elapsed < (AVOID_STOP_MS + AVOID_TURN_MS)) {
+                drive.rotateRight(DRIVE_TURN_RPM);
+            } else {
+                changeState(RobotState::GO_TO_BOX_ZONE);
+            }
+            break;
+        }
+
+        case RobotState::EMERGENCY_STOP:
+            drive.stop();
+            break;
+
+        case RobotState::END_MATCH:
+            drive.stop();
             break;
     }
 }
