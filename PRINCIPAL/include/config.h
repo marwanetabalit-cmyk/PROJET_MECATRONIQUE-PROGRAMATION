@@ -76,8 +76,18 @@ constexpr int CURSOR_PUSH_ANGLE = 140;
 // =========================
 // SECURITE / LOGIQUE
 // =========================
+// Distance de détection d'obstacle (déclenchement évitement)
 constexpr float OBSTACLE_STOP_CM = 20.0f;
+
+// Période d'affichage debug (réduction des appels Serial)
 constexpr unsigned long DEBUG_PERIOD_MS = 250;
+
+// Période de lecture des capteurs (équilibre précision/performance)
 constexpr unsigned long SENSOR_PERIOD_MS = 80;
+
+// Durée du match Eurobot 2026 = 90 secondes
+constexpr unsigned long MATCH_DURATION_MS = 90000;
+
+// Timing pour stratégie d'évitement (non-bloquant)
 constexpr unsigned long AVOID_STOP_MS = 500;
 constexpr unsigned long AVOID_TURN_MS = 700;

@@ -1,64 +1,103 @@
-#include "drive.h"   // Inclusion du header pour la classe DriveBase
-#include "config.h"   // Inclusion du header pour les configurations
+#include "drive.h"
+#include "config.h"
 
-// Constructeur de DriveBase : initialise la communication série et le contrôleur Dynamixel
+// ============================================================================
+// CONSTRUCTEUR ET INITIALISATION
+// ============================================================================
+
+/// Constructeur: sauvegarde la référence au port série et initialise l'objet Dynamixel
 DriveBase::DriveBase(HardwareSerial& serialPort)
     : serial(serialPort), dxl(serialPort, DXL_DIR_PIN) {}
 
-// Applique le signe correct à la vitesse du moteur selon s'il est inversé
+// ============================================================================
+// UTILITAIRES DE CONFIGURATION
+// ============================================================================
+
+/// Applique l'inversion de moteur si nécessaire
+/// @param rpm Vitesse demandée
+/// @param inverted true si le moteur doit être inversé
+/// @return Vitesse signée appropriée
 float DriveBase::applyMotorSign(float rpm, bool inverted) {
-    return inverted ? -rpm : rpm;  // Inverse la vitesse si nécessaire
+    return inverted ? -rpm : rpm;
 }
 
-// Configure un moteur Dynamixel : désactive le couple, définit le mode vitesse, active le couple
+/// Configure un moteur Dynamixel en mode vitesse
+/// @param id ID du moteur Dynamixel (1=gauche, 2=droite)
 void DriveBase::configureMotor(uint8_t id) {
-    dxl.torqueOff(id);                    // Désactive le couple pour la configuration
-    dxl.setOperatingMode(id, OP_VELOCITY); // Définit le mode de fonctionnement en vitesse
-    dxl.torqueOn(id);                     // Active le couple
+    dxl.torqueOff(id);                    // Désactiver le couple (pour la config)
+    dxl.setOperatingMode(id, OP_VELOCITY); // Mode vitesse (pas de position cible)
+    dxl.torqueOn(id);                     // Réactiver le couple
 }
 
-// Initialise le système de conduite : configure la communication série et les moteurs
+// ============================================================================
+// INITIALISATION DU SYSTÈME DE LOCOMOTION
+// ============================================================================
+
 void DriveBase::init() {
-    serial.begin(DXL_BAUDRATE, SERIAL_8N1, DXL_RX_PIN, DXL_TX_PIN);  // Initialise la communication série
-    dxl.begin(DXL_BAUDRATE);                                         // Démarre le contrôleur Dynamixel
-    dxl.setPortProtocolVersion(DXL_PROTOCOL_VERSION);                // Définit la version du protocole
+    // Initialiser la communication série avec les moteurs
+    // ESP32 Serial 2: RX=GPIO16, TX=GPIO17, à 57600 baud
+    serial.begin(DXL_BAUDRATE, SERIAL_8N1, DXL_RX_PIN, DXL_TX_PIN);
 
-    configureMotor(DXL_LEFT_ID);   // Configure le moteur gauche
-    configureMotor(DXL_RIGHT_ID);  // Configure le moteur droit
+    // Initialiser le contrôleur Dynamixel
+    dxl.begin(DXL_BAUDRATE);
 
-    stop();  // Arrête les moteurs après l'initialisation
+    // Définir la version du protocole Dynamixel (v2.0 pour XM430/XL430)
+    dxl.setPortProtocolVersion(DXL_PROTOCOL_VERSION);
+
+    // Configurer chaque moteur
+    configureMotor(DXL_LEFT_ID);   // Moteur gauche (ID=1)
+    configureMotor(DXL_RIGHT_ID);  // Moteur droit (ID=2)
+
+    // Arrêter les moteurs au démarrage
+    stop();
 }
 
-// Définit la vitesse des moteurs gauche et droit, en appliquant les inversions si nécessaire
+// ============================================================================
+// CONTRÔLE DE VITESSE (BAS NIVEAU)
+// ============================================================================
+
+/// Fixe la vitesse des deux moteurs indépendamment
+/// @param leftRpm Vitesse moteur gauche (RPM)
+/// @param rightRpm Vitesse moteur droit (RPM)
 void DriveBase::setVelocity(float leftRpm, float rightRpm) {
-    float leftCmd  = applyMotorSign(leftRpm, LEFT_MOTOR_INVERTED);   // Applique l'inversion pour le moteur gauche
-    float rightCmd = applyMotorSign(rightRpm, RIGHT_MOTOR_INVERTED); // Applique l'inversion pour le moteur droit
+    // Appliquer les inversions de moteur (correction des sens)
+    float leftCmd  = applyMotorSign(leftRpm, LEFT_MOTOR_INVERTED);
+    float rightCmd = applyMotorSign(rightRpm, RIGHT_MOTOR_INVERTED);
 
-    dxl.setGoalVelocity(DXL_LEFT_ID, leftCmd, UNIT_RPM);   // Définit la vitesse du moteur gauche
-    dxl.setGoalVelocity(DXL_RIGHT_ID, rightCmd, UNIT_RPM); // Définit la vitesse du moteur droit
+    // Envoyer les commandes aux moteurs (via protocole Dynamixel)
+    dxl.setGoalVelocity(DXL_LEFT_ID, leftCmd, UNIT_RPM);
+    dxl.setGoalVelocity(DXL_RIGHT_ID, rightCmd, UNIT_RPM);
 }
 
-// Arrête le robot en mettant les vitesses à zéro
+// ============================================================================
+// CONTRÔLE HAUT NIVEAU (MOUVEMENTS)
+// ============================================================================
+
+/// Arrête complètement le robot en mettant les vitesses à zéro
 void DriveBase::stop() {
-    setVelocity(0.0f, 0.0f);  // Vitesses nulles pour les deux moteurs
+    setVelocity(0.0f, 0.0f);
 }
 
-// Fait avancer le robot à la vitesse donnée
+/// Fait avancer le robot en ligne droite
+/// @param rpm Vitesse d'avance (RPM)
 void DriveBase::forward(float rpm) {
-    setVelocity(rpm, rpm);  // Vitesses égales et positives pour avancer
+    setVelocity(rpm, rpm);  // Deux moteurs à la même vitesse positive
 }
 
-// Fait reculer le robot à la vitesse donnée
+/// Fait reculer le robot en ligne droite
+/// @param rpm Vitesse de recul (RPM)
 void DriveBase::backward(float rpm) {
-    setVelocity(-rpm, -rpm);  // Vitesses égales et négatives pour reculer
+    setVelocity(-rpm, -rpm);  // Deux moteurs à la même vitesse négative
 }
 
-// Fait tourner le robot vers la gauche à la vitesse donnée
+/// Fait tourner le robot vers la gauche (rotation en place)
+/// @param rpm Vitesse angulaire (RPM)
 void DriveBase::rotateLeft(float rpm) {
-    setVelocity(-rpm, rpm);  // Moteur gauche négatif, moteur droit positif pour tourner à gauche
+    setVelocity(-rpm, rpm);  // Moteur gauche négatif, droit positif
 }
 
-// Fait tourner le robot vers la droite à la vitesse donnée
+/// Fait tourner le robot vers la droite (rotation en place)
+/// @param rpm Vitesse angulaire (RPM)
 void DriveBase::rotateRight(float rpm) {
-    setVelocity(rpm, -rpm);  // Moteur gauche positif, moteur droit négatif pour tourner à droite
+    setVelocity(rpm, -rpm);  // Moteur gauche positif, droit négatif
 }
