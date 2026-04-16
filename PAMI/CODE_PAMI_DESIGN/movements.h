@@ -5,10 +5,10 @@
 #include "motors.h"
 #include "encoders.h" // Nécessaire pour accéder aux positions
 
-// --- Constantes physiques du robot (À ADAPTER À TON PAMI) ---
-#define TICS_PAR_TOUR       1440.0f  // Ex: Encodeur 360 CPR * 4 (quadrature)
-#define DIAMETRE_ROUE_CM    4.5f     // Diamètre de tes roues
-#define ENTRAXE_CM          12.0f    // Distance entre le centre des deux roues
+// --- Constantes physiques du robot ---
+#define TICS_PAR_TOUR       700.0f  //
+#define DIAMETRE_ROUE_CM    6.5f     // Diamètre de tes roues
+#define ENTRAXE_CM          8.83f    // Distance entre le centre des deux roues
 
 // Constantes calculées utiles
 #define PERIMETRE_ROUE      (DIAMETRE_ROUE_CM * 3.14159f)
