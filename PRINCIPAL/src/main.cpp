@@ -5,6 +5,7 @@
 #include "drive.h"
 #include "servos_ctrl.h"
 #include "strategy.h"
+#include "actions.h"
 
 HardwareSerial DXLSerial(2);
 
@@ -12,6 +13,7 @@ SafetySystem safety;
 UltrasonicArray ultrasons;
 DriveBase drive(DXLSerial);
 ServoController servos;
+ActionManager actions;
 StrategyManager strategy;
 
 DistanceReadings distances;
@@ -22,12 +24,18 @@ unsigned long lastDebugMs = 0;
 
 static const char* stateToString(RobotState s) {
     switch (s) {
-        case RobotState::WAIT_START:     return "WAIT_START";
-        case RobotState::RUN_FORWARD:    return "RUN_FORWARD";
-        case RobotState::AVOID_OBSTACLE: return "AVOID_OBSTACLE";
-        case RobotState::EMERGENCY_STOP: return "EMERGENCY_STOP";
-        case RobotState::END_MATCH:      return "END_MATCH";
-        default:                         return "UNKNOWN";
+        case RobotState::WAIT_START:        return "WAIT_START";
+        case RobotState::GO_TO_BOX_ZONE:    return "GO_TO_BOX_ZONE";
+        case RobotState::PICK_BOX:          return "PICK_BOX";
+        case RobotState::GO_TO_DROP_ZONE:   return "GO_TO_DROP_ZONE";
+        case RobotState::DROP_BOX:          return "DROP_BOX";
+        case RobotState::GO_TO_THERMOMETER: return "GO_TO_THERMOMETER";
+        case RobotState::PUSH_CURSOR:       return "PUSH_CURSOR";
+        case RobotState::RETURN_TO_NEST:    return "RETURN_TO_NEST";
+        case RobotState::AVOID_OBSTACLE:    return "AVOID_OBSTACLE";
+        case RobotState::EMERGENCY_STOP:    return "EMERGENCY_STOP";
+        case RobotState::END_MATCH:         return "END_MATCH";
+        default:                            return "UNKNOWN";
     }
 }
 
@@ -35,7 +43,6 @@ SimInputs generateSimulationScenario() {
     SimInputs sim;
     unsigned long t = millis();
 
-    // Valeurs par défaut : aucun obstacle, pas de départ, pas d'arrêt d'urgence
     sim.startPressed = false;
     sim.eStopPressed = false;
     sim.distances.front = 100.0f;
@@ -43,25 +50,16 @@ SimInputs generateSimulationScenario() {
     sim.distances.right = 100.0f;
     sim.distances.obstacle = false;
 
-    // 0 à 3 s : attente
     if (t >= 3000) {
         sim.startPressed = true;
     }
 
-    // 8 à 12 s : obstacle en face
-    if (t >= 8000 && t < 12000) {
+    if (t >= 9000 && t < 11000) {
         sim.distances.front = 10.0f;
         sim.distances.obstacle = true;
     }
 
-    // 16 à 18 s : obstacle à gauche
-    if (t >= 16000 && t < 18000) {
-        sim.distances.left = 12.0f;
-        sim.distances.obstacle = true;
-    }
-
-    // 25 s et plus : arrêt d'urgence
-    if (t >= 25000) {
+    if (t >= 30000) {
         sim.eStopPressed = true;
     }
 
@@ -78,6 +76,7 @@ void setup() {
     safety.init();
     ultrasons.init();
     servos.init();
+    actions.init();
     drive.init();
     strategy.init();
 
@@ -99,11 +98,11 @@ void loop() {
             distances = ultrasons.readAll();
         }
 
-        strategy.update(safety, distances, drive, servos);
+        strategy.update(safety, distances, drive, servos, actions);
     }
     else if (ROBOT_MODE == MODE_SIMULATION) {
         simInputs = generateSimulationScenario();
-        strategy.updateSimulation(simInputs, drive, servos);
+        strategy.updateSimulation(simInputs, drive, servos, actions);
         distances = simInputs.distances;
     }
 
