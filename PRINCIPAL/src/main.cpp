@@ -63,6 +63,33 @@ static const char* stateToString(RobotState s) {
 // TESTS UNITAIRES
 // ============================================================================
 
+SimInputs generateSimulationScenario() {
+    SimInputs sim;
+    unsigned long t = millis();
+
+    sim.startPressed = false;
+    sim.eStopPressed = false;
+    sim.distances.front = 100.0f;
+    sim.distances.left  = 100.0f;
+    sim.distances.right = 100.0f;
+    sim.distances.obstacle = false;
+
+    if (t >= 3000) {
+        sim.startPressed = true;
+    }
+
+    if (t >= 9000 && t < 11000) {
+        sim.distances.front = 10.0f;
+        sim.distances.obstacle = true;
+    }
+
+    if (t >= 30000) {
+        sim.eStopPressed = true;
+    }
+
+    return sim;
+}
+
 void test_safety() {
     Serial.println("\n=== TEST SÉCURITÉ ===");
     Serial.print("  Start button: ");
@@ -194,33 +221,6 @@ void test_complete() {
     }
 
     delay(1);
-}
-
-SimInputs generateSimulationScenario() {
-    SimInputs sim;
-    unsigned long t = millis();
-
-    sim.startPressed = false;
-    sim.eStopPressed = false;
-    sim.distances.front = 100.0f;
-    sim.distances.left  = 100.0f;
-    sim.distances.right = 100.0f;
-    sim.distances.obstacle = false;
-
-    if (t >= 3000) {
-        sim.startPressed = true;
-    }
-
-    if (t >= 9000 && t < 11000) {
-        sim.distances.front = 10.0f;
-        sim.distances.obstacle = true;
-    }
-
-    if (t >= 30000) {
-        sim.eStopPressed = true;
-    }
-
-    return sim;
 }
 
 // ============================================================================

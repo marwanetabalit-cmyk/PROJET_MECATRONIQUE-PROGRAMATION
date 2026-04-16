@@ -169,11 +169,3 @@ ActionResult ActionManager::returnHome() {
     // Cette opération ne bloque pas puisque les servos gèrent eux-mêmes le positionnement
     return ActionResult::DONE;
 }
-
-ActionResult ActionManager::returnHome() {
-    logAction("Retour au nid demande");
-    delay(500);
-
-    logAction("Retour au nid termine");
-    return ActionResult::DONE;
-}
