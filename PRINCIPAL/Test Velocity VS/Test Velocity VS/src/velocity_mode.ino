@@ -16,65 +16,91 @@
 
 #include <Dynamixel2Arduino.h>
 
-  #define DXL_SERIAL   Serial2
-  #define DEBUG_SERIAL Serial
-  const int DXL_DIR_PIN = 23; // DYNAMIXEL Shield DIR PIN
-  #define RXD2 16
-  #define TXD2 17
- 
+#define DXL_SERIAL   Serial2
+#define DEBUG_SERIAL Serial
+const int DXL_DIR_PIN = 23; // DYNAMIXEL Shield DIR PIN
+#define RXD2 16
+#define TXD2 17
 
 const uint8_t DXL_ID = 1;
 const float DXL_PROTOCOL_VERSION = 2.0;
 
 Dynamixel2Arduino dxl(DXL_SERIAL, DXL_DIR_PIN);
 
-//This namespace is required to use Control table item names
+// This namespace is required to use Control table item names
 using namespace ControlTableItem;
 
-void setup() {
-  // put your setup code here, to run once:
-  
-  // Use UART port of DYNAMIXEL Shield to debug.
-  DEBUG_SERIAL.begin(115200);
-  Serial2.begin(57600, SERIAL_8N1, RXD2, TXD2);
-  
-  // Set Port baudrate to 57600bps. This has to match with DYNAMIXEL baudrate.
-  dxl.begin(57600);
-  
-  // Set Port Protocol Version. This has to match with DYNAMIXEL protocol version.
-  dxl.setPortProtocolVersion(DXL_PROTOCOL_VERSION);
-  // Get DYNAMIXEL information
-  dxl.ping(DXL_ID);
+void scanIDs(uint8_t maxID = 20) {
+  DEBUG_SERIAL.println("\n[SCAN ID] Recherche de Dynamixel...");
+  bool foundAny = false;
+  for (uint8_t id = 1; id <= maxID; id++) {
+    DEBUG_SERIAL.print("  ID ");
+    DEBUG_SERIAL.print(id);
+    DEBUG_SERIAL.print(" -> ");
+    if (dxl.ping(id)) {
+      DEBUG_SERIAL.println("TROUVÉ");
+      foundAny = true;
+    } else {
+      DEBUG_SERIAL.println("absent");
+    }
+    delay(30);
+  }
+  if (!foundAny) {
+    DEBUG_SERIAL.print("  Aucun Dynamixel trouvé entre 1 et ");
+    DEBUG_SERIAL.println(maxID);
+  }
+}
 
-  // Turn off torque when configuring items in EEPROM area
-  dxl.torqueOff(DXL_ID);
-  dxl.setOperatingMode(DXL_ID, OP_VELOCITY);
-  dxl.torqueOn(DXL_ID);
+void setup() {
+  DEBUG_SERIAL.begin(115200);
+  delay(500);
+  DXL_SERIAL.begin(57600, SERIAL_8N1, RXD2, TXD2);
+  delay(500);
+
+  DEBUG_SERIAL.println("\n=== DYNAMIXEL DEBUG ===");
+
+  dxl.begin(57600);
+  dxl.setPortProtocolVersion(DXL_PROTOCOL_VERSION);
+
+  DEBUG_SERIAL.print("Ping ID ");
+  DEBUG_SERIAL.print(DXL_ID);
+  DEBUG_SERIAL.print(" : ");
+  bool pingOK = dxl.ping(DXL_ID);
+  DEBUG_SERIAL.println(pingOK ? "OK" : "FAIL");
+
+  if (!pingOK) {
+    scanIDs(20);
+  }
+
+  DEBUG_SERIAL.print("Torque OFF ID ");
+  DEBUG_SERIAL.print(DXL_ID);
+  DEBUG_SERIAL.print(" : ");
+  bool torqueOffOK = dxl.torqueOff(DXL_ID);
+  DEBUG_SERIAL.println(torqueOffOK ? "OK" : "FAIL");
+
+  DEBUG_SERIAL.print("Set OPCODE VELOCITY : ");
+  bool modeOK = dxl.setOperatingMode(DXL_ID, OP_VELOCITY);
+  DEBUG_SERIAL.println(modeOK ? "OK" : "FAIL");
+
+  DEBUG_SERIAL.print("Torque ON ID ");
+  DEBUG_SERIAL.print(DXL_ID);
+  DEBUG_SERIAL.print(" : ");
+  bool torqueOnOK = dxl.torqueOn(DXL_ID);
+  DEBUG_SERIAL.println(torqueOnOK ? "OK" : "FAIL");
+
+  DEBUG_SERIAL.println("\n=== FIN SETUP ===\n");
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
-  
-  // Please refer to e-Manual(http://emanual.robotis.com) for available range of value. 
-  // Set Goal Velocity using RAW unit
-  dxl.setGoalVelocity(DXL_ID, 200);
-  delay(1000);
-  // Print present velocity
-  DEBUG_SERIAL.print("Present Velocity(raw) : ");
+  dxl.setGoalVelocity(DXL_ID, 50, UNIT_PERCENT);
+  delay(500);
+
+  DEBUG_SERIAL.print("Present Velocity (raw) : ");
   DEBUG_SERIAL.println(dxl.getPresentVelocity(DXL_ID));
-  delay(1000);
 
-  // Set Goal Velocity using RPM
-  dxl.setGoalVelocity(DXL_ID, 25.8, UNIT_RPM);
-  delay(1000);
-  DEBUG_SERIAL.print("Present Velocity(rpm) : ");
+  DEBUG_SERIAL.print("Present Velocity (RPM) : ");
   DEBUG_SERIAL.println(dxl.getPresentVelocity(DXL_ID, UNIT_RPM));
-  delay(1000);
 
-  // Set Goal Velocity using percentage (-100.0 [%] ~ 100.0 [%])
-  dxl.setGoalVelocity(DXL_ID, -10.2, UNIT_PERCENT);
-  delay(1000);
-  DEBUG_SERIAL.print("Present Velocity(ratio) : ");
-  DEBUG_SERIAL.println(dxl.getPresentVelocity(DXL_ID, UNIT_PERCENT));
+  DEBUG_SERIAL.println("---");
   delay(1000);
 }
