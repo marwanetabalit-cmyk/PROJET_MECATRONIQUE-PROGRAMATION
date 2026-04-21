@@ -45,6 +45,7 @@ public:
 
 private:
     RobotState state = RobotState::WAIT_START;
+    RobotState stateBeforeAvoidance = RobotState::WAIT_START;
     unsigned long stateStartMs = 0;
     unsigned long matchStartMs = 0;
 

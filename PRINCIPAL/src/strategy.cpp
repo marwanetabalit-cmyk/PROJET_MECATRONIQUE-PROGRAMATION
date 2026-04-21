@@ -8,6 +8,7 @@
 void StrategyManager::init() {
     // Initialiser la machine à états: attendre le signal de départ
     state = RobotState::WAIT_START;
+    stateBeforeAvoidance = RobotState::WAIT_START;
     stateStartMs = millis();
     matchStartMs = 0;
 }
@@ -86,11 +87,15 @@ void StrategyManager::coreUpdate(bool startPressed,
 
     // Évitement d'obstacle: priorité haute (sauf si déjà en cours)
     // Détecte un obstacle devant, sur les côtés
-    if (state != RobotState::AVOID_OBSTACLE &&
-        state != RobotState::EMERGENCY_STOP &&
-        state != RobotState::END_MATCH &&
-        distances.obstacle) {
+    bool canAvoidObstacle =
+        state == RobotState::GO_TO_BOX_ZONE ||
+        state == RobotState::GO_TO_DROP_ZONE ||
+        state == RobotState::GO_TO_THERMOMETER ||
+        state == RobotState::RETURN_TO_NEST;
+
+    if (canAvoidObstacle && distances.obstacle) {
         drive.stop();
+        stateBeforeAvoidance = state;
         changeState(RobotState::AVOID_OBSTACLE);
         return;
     }
@@ -105,7 +110,7 @@ void StrategyManager::coreUpdate(bool startPressed,
         // ====================================================================
         case RobotState::WAIT_START:
             drive.stop();
-            if (startPressed) {
+            if (startPressed || AUTO_START_WITHOUT_BUTTON) {
                 // Signal de départ reçu: lancer le chronomètre du match
                 matchStartMs = millis();
                 changeState(RobotState::GO_TO_BOX_ZONE);
@@ -254,7 +259,7 @@ void StrategyManager::coreUpdate(bool startPressed,
                 drive.rotateRight(DRIVE_TURN_RPM);
             } else {
                 // Temps écoulé: reprendre la navigation vers la zone de boîtes
-                changeState(RobotState::GO_TO_BOX_ZONE);
+                changeState(stateBeforeAvoidance);
             }
             break;
         }

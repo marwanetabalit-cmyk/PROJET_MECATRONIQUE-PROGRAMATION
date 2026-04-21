@@ -29,13 +29,16 @@ void ActionManager::resetAction() {
 // ============================================================================
 
 ActionResult ActionManager::executeStepByStep(ServoController& servos,
-                                               ActionState firstStep,
-                                               ActionState lastStep,
+                                               const ActionState* steps,
                                                const unsigned long* stepDurations,
                                                uint8_t stepCount) {
+    if (stepCount == 0) {
+        return ActionResult::DONE;
+    }
+
     // Première invocation: initialiser l'action
     if (currentAction == ActionState::IDLE) {
-        currentAction = firstStep;
+        currentAction = steps[0];
         stateStartMs = millis();
         logAction("Action demarree");
         return ActionResult::IN_PROGRESS;
@@ -51,7 +54,19 @@ ActionResult ActionManager::executeStepByStep(ServoController& servos,
     }
 
     // Déterminer l'étape actuelle et exécuter la commande servo
-    uint8_t stepIndex = static_cast<uint8_t>(currentAction) - static_cast<uint8_t>(firstStep);
+    uint8_t stepIndex = stepCount;
+    for (uint8_t i = 0; i < stepCount; ++i) {
+        if (currentAction == steps[i]) {
+            stepIndex = i;
+            break;
+        }
+    }
+
+    if (stepIndex >= stepCount) {
+        logAction("Action invalide - ECHEC");
+        currentAction = ActionState::IDLE;
+        return ActionResult::FAILED;
+    }
 
     if (stepIndex < stepCount) {
         // Commander le servo correspondant à l'étape actuelle
@@ -70,14 +85,14 @@ ActionResult ActionManager::executeStepByStep(ServoController& servos,
         // Vérifier si suffisamment de temps s'est écoulé pour passer à l'étape suivante
         if (elapsed >= stepDurations[stepIndex]) {
             // Vérifier si c'était la dernière étape
-            if (currentAction == lastStep) {
+            if (stepIndex + 1 >= stepCount) {
                 logAction("Action terminee");
                 currentAction = ActionState::IDLE;
                 return ActionResult::DONE;
             }
 
             // Passer à l'étape suivante
-            currentAction = static_cast<ActionState>(static_cast<uint8_t>(currentAction) + 1);
+            currentAction = steps[stepIndex + 1];
             stateStartMs = millis();
         }
     }
@@ -92,10 +107,10 @@ ActionResult ActionManager::executeStepByStep(ServoController& servos,
 ActionResult ActionManager::splitBoxes(ServoController& servos) {
     // Étapes: SPLIT_OPEN -> SPLIT_CLOSE
     // Durées: 500ms pour ouvrir, 500ms pour fermer
+    static const ActionState steps[] = {ActionState::SPLIT_OPEN, ActionState::SPLIT_CLOSE};
     static const unsigned long stepDurations[] = {500, 500};
     return executeStepByStep(servos,
-                              ActionState::SPLIT_OPEN,
-                              ActionState::SPLIT_CLOSE,
+                              steps,
                               stepDurations,
                               2);
 }
@@ -103,10 +118,10 @@ ActionResult ActionManager::splitBoxes(ServoController& servos) {
 ActionResult ActionManager::gripBox(ServoController& servos) {
     // Étapes: GRIP_OPEN -> GRIP_CLOSE
     // Durées: 400ms pour ouvrir, 600ms pour fermer
+    static const ActionState steps[] = {ActionState::GRIP_OPEN, ActionState::GRIP_CLOSE};
     static const unsigned long stepDurations[] = {400, 600};
     return executeStepByStep(servos,
-                              ActionState::GRIP_OPEN,
-                              ActionState::GRIP_CLOSE,
+                              steps,
                               stepDurations,
                               2);
 }
@@ -114,10 +129,10 @@ ActionResult ActionManager::gripBox(ServoController& servos) {
 ActionResult ActionManager::liftBox(ServoController& servos) {
     // Étape unique: LIFT_UP
     // Durée: 700ms pour lever
+    static const ActionState steps[] = {ActionState::LIFT_UP};
     static const unsigned long stepDurations[] = {700};
     return executeStepByStep(servos,
-                              ActionState::LIFT_UP,
-                              ActionState::LIFT_UP,
+                              steps,
                               stepDurations,
                               1);
 }
@@ -130,10 +145,17 @@ ActionResult ActionManager::pickBox(ServoController& servos) {
     // 4. Fermer pince (700ms)
     // 5. Lever bras (700ms)
     // 6. Fermer séparateur (400ms)
+    static const ActionState steps[] = {
+        ActionState::SPLIT_OPEN,
+        ActionState::GRIP_OPEN,
+        ActionState::LIFT_DOWN,
+        ActionState::GRIP_CLOSE,
+        ActionState::LIFT_UP,
+        ActionState::SPLIT_CLOSE
+    };
     static const unsigned long stepDurations[] = {500, 400, 600, 700, 700, 400};
     return executeStepByStep(servos,
-                              ActionState::SPLIT_OPEN,
-                              ActionState::SPLIT_CLOSE,
+                              steps,
                               stepDurations,
                               6);
 }
@@ -143,10 +165,14 @@ ActionResult ActionManager::dropBox(ServoController& servos) {
     // 1. Baisser bras (700ms)
     // 2. Ouvrir pince (600ms)
     // 3. Lever bras (500ms)
+    static const ActionState steps[] = {
+        ActionState::LIFT_DOWN,
+        ActionState::GRIP_OPEN,
+        ActionState::LIFT_UP
+    };
     static const unsigned long stepDurations[] = {700, 600, 500};
     return executeStepByStep(servos,
-                              ActionState::LIFT_DOWN,
-                              ActionState::LIFT_UP,
+                              steps,
                               stepDurations,
                               3);
 }
@@ -155,10 +181,10 @@ ActionResult ActionManager::pushCursor(ServoController& servos) {
     // Séquence du curseur thermomètre:
     // 1. Pousser curseur (700ms)
     // 2. Ramener home (700ms)
+    static const ActionState steps[] = {ActionState::CURSOR_PUSH, ActionState::CURSOR_HOME};
     static const unsigned long stepDurations[] = {700, 700};
     return executeStepByStep(servos,
-                              ActionState::CURSOR_PUSH,
-                              ActionState::CURSOR_HOME,
+                              steps,
                               stepDurations,
                               2);
 }
@@ -170,10 +196,3 @@ ActionResult ActionManager::returnHome() {
     return ActionResult::DONE;
 }
 
-ActionResult ActionManager::returnHome() {
-    logAction("Retour au nid demande");
-    delay(500);
-
-    logAction("Retour au nid termine");
-    return ActionResult::DONE;
-}

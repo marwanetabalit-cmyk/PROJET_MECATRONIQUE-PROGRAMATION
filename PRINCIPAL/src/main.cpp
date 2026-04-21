@@ -26,6 +26,8 @@ SimInputs simInputs;
 unsigned long lastSensorReadMs = 0;
 unsigned long lastDebugMs = 0;
 
+SimInputs generateSimulationScenario();
+
 // ============================================================================
 // MODE TEST: État de test actuel
 // ============================================================================
@@ -36,11 +38,183 @@ enum class TestMode {
     SERVO_TEST,         // Tester les servos
     MOTOR_TEST,         // Tester les moteurs Dynamixel
     STRATEGY_TEST,      // Tester la stratégie complète
+    OBSTACLE_TEST,      // Tester l'evitement avec l'ultrason reel
     COMPLETE_TEST       // Tester tout ensemble
 };
 
 // Mode de test actuel (à changer pour différents tests)
 constexpr TestMode CURRENT_TEST = TestMode::COMPLETE_TEST;
+
+// Variable globale pour le test actif sélectionné
+TestMode activeTest = CURRENT_TEST;
+bool testRunning = false;
+bool obstacleAvoiding = false;
+unsigned long obstacleAvoidStartMs = 0;
+
+// ============================================================================
+// MENU INTERACTIF
+// ============================================================================
+
+void printMenu() {
+    Serial.println("7 = Test evitement ultrason reel");
+    Serial.println("\n╔════════════════════════════════════════╗");
+    Serial.println("║  MENU - Tapez une lettre (+ Entrée)  ║");
+    Serial.println("╠════════════════════════════════════════╣");
+    Serial.println("║  1 = Test Sécurité (boutons)          ║");
+    Serial.println("║  2 = Test Ultrasons                   ║");
+    Serial.println("║  3 = Test Servos                      ║");
+    Serial.println("║  4 = Test Moteurs                     ║");
+    Serial.println("║  5 = Test Stratégie                   ║");
+    Serial.println("║  6 = Test Complet (tout)              ║");
+    Serial.println("║  ? = Afficher ce menu                 ║");
+    Serial.println("╚════════════════════════════════════════╝\n");
+}
+
+void handleSerialInput() {
+    if (Serial.available()) {
+        char cmd = Serial.read();
+        Serial.println(cmd);  // Echo
+        
+        switch (cmd) {
+            case '1':
+                Serial.println("\n>>> Sélection: TEST SÉCURITÉ");
+                activeTest = TestMode::SAFETY_TEST;
+                testRunning = true;
+                break;
+            case '2':
+                Serial.println("\n>>> Sélection: TEST ULTRASONS");
+                activeTest = TestMode::ULTRASONIC_TEST;
+                testRunning = true;
+                break;
+            case '3':
+                Serial.println("\n>>> Sélection: TEST SERVOS");
+                activeTest = TestMode::SERVO_TEST;
+                testRunning = true;
+                break;
+            case '4':
+                Serial.println("\n>>> Sélection: TEST MOTEURS");
+                activeTest = TestMode::MOTOR_TEST;
+                testRunning = true;
+                break;
+            case '5':
+                Serial.println("\n>>> Sélection: TEST STRATÉGIE");
+                activeTest = TestMode::STRATEGY_TEST;
+                testRunning = true;
+                break;
+            case '6':
+                Serial.println("\n>>> Sélection: TEST COMPLET");
+                activeTest = TestMode::COMPLETE_TEST;
+                testRunning = true;
+                break;
+            case '7':
+                Serial.println("\n>>> Selection: TEST EVITEMENT ULTRASON");
+                activeTest = TestMode::OBSTACLE_TEST;
+                obstacleAvoiding = false;
+                testRunning = true;
+                break;
+            case '?':
+                printMenu();
+                break;
+            case 's':
+            case 'S':
+                Serial.println("\n>>> STOP du test actuel");
+                drive.stop();
+                testRunning = false;
+                printMenu();
+                break;
+            default:
+                if (cmd >= 32 && cmd <= 126) {  // Caractère imprimable
+                    Serial.println("? Commande inconnue. Tapez ? pour l'aide.");
+                }
+        }
+    }
+}
+
+// ============================================================================
+// TESTS AMÉLIORÉS
+// ============================================================================
+
+void test_safety_loop() {
+    Serial.print("  Start: ");
+    Serial.print(safety.isStartPressed() ? "✓ PRESSÉ" : "  Libre");
+    Serial.print(" | E-Stop: ");
+    Serial.println(safety.isEStopPressed() ? "✓ PRESSÉ" : "  Libre");
+}
+
+void test_ultrasonic_loop() {
+    distances = ultrasons.readAll();
+    Serial.print("  F:");
+    if (distances.front > 0) {
+        Serial.print(distances.front, 1);
+        Serial.print("cm");
+    } else {
+        Serial.print("--");
+    }
+    Serial.print(" | L:");
+    if (distances.left > 0) {
+        Serial.print(distances.left, 1);
+        Serial.print("cm");
+    } else {
+        Serial.print("--");
+    }
+    Serial.print(" | R:");
+    if (distances.right > 0) {
+        Serial.print(distances.right, 1);
+        Serial.print("cm");
+    } else {
+        Serial.print("--");
+    }
+    Serial.print(" | Obstacle: ");
+    Serial.println(distances.obstacle ? "⚠️ OUI" : "   NON");
+}
+
+void test_obstacle_avoidance_loop() {
+    unsigned long now = millis();
+
+    if (now - lastSensorReadMs >= SENSOR_PERIOD_MS) {
+        lastSensorReadMs = now;
+        distances = ultrasons.readAll();
+    }
+
+    bool frontObstacle = (distances.front > 0.0f && distances.front < OBSTACLE_STOP_CM);
+
+    if (!obstacleAvoiding && frontObstacle) {
+        obstacleAvoiding = true;
+        obstacleAvoidStartMs = now;
+        Serial.println("[OBSTACLE] Obstacle detecte -> stop puis rotation droite");
+    }
+
+    if (obstacleAvoiding) {
+        unsigned long elapsed = now - obstacleAvoidStartMs;
+
+        if (elapsed < AVOID_STOP_MS) {
+            drive.stop();
+        } else if (elapsed < (AVOID_STOP_MS + AVOID_TURN_MS)) {
+            drive.rotateRight(DRIVE_TURN_RPM);
+        } else {
+            drive.stop();
+            obstacleAvoiding = false;
+            Serial.println("[OBSTACLE] Evitement termine");
+        }
+    } else {
+        drive.stop();
+    }
+
+    if (now - lastDebugMs >= DEBUG_PERIOD_MS) {
+        lastDebugMs = now;
+        Serial.print("[OBSTACLE] Front=");
+        if (distances.front > 0.0f) {
+            Serial.print(distances.front, 1);
+            Serial.print("cm");
+        } else {
+            Serial.print("--");
+        }
+        Serial.print(" | seuil=");
+        Serial.print(OBSTACLE_STOP_CM, 1);
+        Serial.print("cm | action=");
+        Serial.println(obstacleAvoiding ? "EVITEMENT" : "ATTENTE");
+    }
+}
 
 static const char* stateToString(RobotState s) {
     switch (s) {
@@ -163,12 +337,23 @@ void test_complete() {
     // Lecture capteurs
     if (now - lastSensorReadMs >= SENSOR_PERIOD_MS) {
         lastSensorReadMs = now;
-        simInputs = generateSimulationScenario();
-        distances = simInputs.distances;
+        if (ROBOT_MODE == MODE_REAL) {
+            distances = ultrasons.readAll();
+            simInputs.startPressed = safety.isStartPressed();
+            simInputs.eStopPressed = safety.isEStopPressed();
+            simInputs.distances = distances;
+        } else {
+            simInputs = generateSimulationScenario();
+            distances = simInputs.distances;
+        }
     }
 
     // Mise à jour stratégie
-    strategy.updateSimulation(simInputs, drive, servos, actions);
+    if (ROBOT_MODE == MODE_REAL) {
+        strategy.update(safety, distances, drive, servos, actions);
+    } else {
+        strategy.updateSimulation(simInputs, drive, servos, actions);
+    }
 
     // Debug
     if (now - lastDebugMs >= DEBUG_PERIOD_MS) {
@@ -282,6 +467,9 @@ void setup() {
         case TestMode::STRATEGY_TEST:
             Serial.println("Mode de test: STRATÉGIE");
             break;
+        case TestMode::OBSTACLE_TEST:
+            Serial.println("Mode de test: EVITEMENT ULTRASON REEL");
+            break;
         case TestMode::COMPLETE_TEST:
             Serial.println("Mode de test: COMPLET (stratégie + composants)");
             break;
@@ -304,12 +492,22 @@ void setup() {
     else if (CURRENT_TEST == TestMode::STRATEGY_TEST) {
         test_strategy();
     }
+    else if (CURRENT_TEST == TestMode::OBSTACLE_TEST) {
+        Serial.println("Lancement du test EVITEMENT ULTRASON...");
+        Serial.println("Placez la main devant le capteur avant: le robot doit stopper puis tourner a droite.\n");
+        obstacleAvoiding = false;
+        testRunning = true;
+    }
     else if (CURRENT_TEST == TestMode::COMPLETE_TEST) {
         Serial.println("Lancement du test COMPLET...\n");
+        testRunning = true;
     }
 
     lastSensorReadMs = millis();
     lastDebugMs = millis();
+    
+    // Afficher le menu initial
+    printMenu();
 }
 
 // ============================================================================
@@ -317,19 +515,43 @@ void setup() {
 // ============================================================================
 
 void loop() {
-    if (CURRENT_TEST == TestMode::SAFETY_TEST) {
-        test_safety();
-        delay(500);
+    handleSerialInput();
+
+    if (!testRunning) {
+        delay(50);
+        return;
     }
-    else if (CURRENT_TEST == TestMode::ULTRASONIC_TEST) {
-        test_ultrasonic();
-        delay(500);
+
+    switch (activeTest) {
+        case TestMode::SAFETY_TEST:
+            test_safety_loop();
+            break;
+        case TestMode::ULTRASONIC_TEST:
+            test_ultrasonic_loop();
+            break;
+        case TestMode::SERVO_TEST:
+            test_servo();
+            testRunning = false;
+            break;
+        case TestMode::MOTOR_TEST:
+            test_motor();
+            testRunning = false;
+            break;
+        case TestMode::STRATEGY_TEST:
+            test_strategy();
+            testRunning = false;
+            break;
+        case TestMode::OBSTACLE_TEST:
+            test_obstacle_avoidance_loop();
+            break;
+        case TestMode::COMPLETE_TEST:
+            test_complete();
+            break;
     }
-    else if (CURRENT_TEST == TestMode::COMPLETE_TEST) {
-        test_complete();
-    }
-    else {
-        // Les autres tests s'exécutent en setup() et terminé
-        delay(1000);
+
+    if (activeTest == TestMode::OBSTACLE_TEST || activeTest == TestMode::COMPLETE_TEST) {
+        delay(20);
+    } else {
+        delay(200);
     }
 }

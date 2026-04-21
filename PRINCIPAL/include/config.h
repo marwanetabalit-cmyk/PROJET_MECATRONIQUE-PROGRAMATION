@@ -7,7 +7,7 @@
 #define MODE_REAL       0
 #define MODE_SIMULATION 1
 
-constexpr int ROBOT_MODE = MODE_SIMULATION;
+constexpr int ROBOT_MODE = MODE_REAL;
 
 // =========================
 // BROCHES GENERALES
@@ -15,12 +15,15 @@ constexpr int ROBOT_MODE = MODE_SIMULATION;
 constexpr uint8_t PIN_START_SWITCH = 27;   // microrupteur de départ
 constexpr uint8_t PIN_ESTOP        = 14;   // arrêt d'urgence logique
 
+// Mettre a false quand le bouton start sera cable.
+constexpr bool AUTO_START_WITHOUT_BUTTON = true;
+
 // =========================
 // ULTRASONS
 // Echo -> à adapter vers 3.3V avant entrée ESP32
 // =========================
-constexpr uint8_t US_FRONT_TRIG = 33;
-constexpr uint8_t US_FRONT_ECHO = 36;   // input only
+constexpr uint8_t US_FRONT_TRIG = 33;   // J11 - Trig
+constexpr uint8_t US_FRONT_ECHO = 36;   // J11 - Echo, input only
 
 constexpr uint8_t US_LEFT_TRIG  = 25;
 constexpr uint8_t US_LEFT_ECHO  = 39;   // input only

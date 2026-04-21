@@ -73,14 +73,12 @@ private:
 
     /// Dirige l'exécution d'une action étape par étape (machine à états interne)
     /// @param servos Contrôleur de servos
-    /// @param firstStep État initial quand l'action commence
-    /// @param lastStep État final après lequel l'action est terminée
+    /// @param steps Sequence ordonnee des etapes a executer
     /// @param stepDurations Tableau des durées de chaque étape (en ms)
     /// @param stepCount Nombre d'étapes
     /// @return IN_PROGRESS si en cours, DONE si terminée, FAILED si timeout
     ActionResult executeStepByStep(ServoController& servos,
-                                    ActionState firstStep,
-                                    ActionState lastStep,
+                                    const ActionState* steps,
                                     const unsigned long* stepDurations,
                                     uint8_t stepCount);
 
