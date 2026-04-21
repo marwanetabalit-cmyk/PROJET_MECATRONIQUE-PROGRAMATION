@@ -195,4 +195,3 @@ ActionResult ActionManager::returnHome() {
     // Cette opération ne bloque pas puisque les servos gèrent eux-mêmes le positionnement
     return ActionResult::DONE;
 }
-

@@ -38,7 +38,6 @@ void pami_stopper(void) {
 // ==========================================
 
 // Cette fonction lit les encodeurs et attend qu'ils atteignent une valeur cible.
-// C'est un asservissement "On/Off" très basique (pas de PID pour l'instant).
 static void wait_target(int32_t target_left, int32_t target_right) {
     bool left_ok = false;
     bool right_ok = false;
