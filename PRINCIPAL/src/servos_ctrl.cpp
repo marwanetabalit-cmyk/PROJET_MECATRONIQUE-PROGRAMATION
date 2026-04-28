@@ -88,7 +88,6 @@ void ServoController::cursorPush() {
 
 /// Exécute une démonstration complète de tous les servos
 /// ATTENTION: Cette fonction est BLOQUANTE (utilise delay)
-///            À utiliser seulement en test, PAS pendant le match !
 void ServoController::demoSequence() {
     Serial.println("[SERVO] Démo séquence commence");
 
