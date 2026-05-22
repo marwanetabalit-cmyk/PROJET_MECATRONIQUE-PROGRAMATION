@@ -54,6 +54,39 @@ constexpr float DRIVE_FORWARD_RPM = 30.0f;
 constexpr float DRIVE_TURN_RPM    = 20.0f;
 
 // =========================
+// ODOMETRIE CHENILLES
+// =========================
+// Donnees mecaniques fournies:
+// - barbotin 18 dents
+// - pas de chenille 6 mm
+// Donc 1 tour de barbotin deplace la chenille de 18 * 6 mm = 108 mm.
+constexpr float TRACK_PITCH_CM = 0.6f;
+constexpr float TRACK_SPROCKET_TEETH = 18.0f;
+constexpr float TRACK_CM_PER_REV = TRACK_PITCH_CM * TRACK_SPROCKET_TEETH;
+
+// Distance entre les axes moyens des deux chenilles.
+// A mesurer sur le robot, puis a calibrer en rotation.
+constexpr float TRACK_BASE_CM = 25.0f;
+
+// Les chenilles glissent en rotation: ajuster apres essais reels.
+// Si le robot tourne trop peu, augmenter. S'il tourne trop, diminuer.
+constexpr float TRACK_TURN_CORRECTION = 1.0f;
+
+constexpr unsigned long ODOMETRY_PERIOD_MS = 50;
+
+// Distances de strategie. Les valeurs ci-dessous reprennent grossierement les
+// anciens deplacements temporises avec DRIVE_FORWARD_RPM = 30 rpm.
+constexpr float DIST_TO_BOX_ZONE_CM = 11.0f;
+constexpr float DIST_TO_DROP_ZONE_CM = 11.0f;
+constexpr float DIST_TO_THERMOMETER_CM = 8.0f;
+constexpr float DIST_RETURN_TO_NEST_CM = 27.0f;
+
+constexpr unsigned long MOVE_TO_BOX_TIMEOUT_MS = 5000;
+constexpr unsigned long MOVE_TO_DROP_TIMEOUT_MS = 5000;
+constexpr unsigned long MOVE_TO_THERMOMETER_TIMEOUT_MS = 4000;
+constexpr unsigned long RETURN_TO_NEST_TIMEOUT_MS = 8000;
+
+// =========================
 // SERVOS CLASSIQUES
 // =========================
 constexpr uint8_t SERVO_LIFT_PIN      = 18;
@@ -94,3 +127,4 @@ constexpr unsigned long MATCH_DURATION_MS = 90000;
 // Timing pour stratégie d'évitement (non-bloquant)
 constexpr unsigned long AVOID_STOP_MS = 500;
 constexpr unsigned long AVOID_TURN_MS = 700;
+constexpr float AVOID_TURN_DEG = 20.0f;

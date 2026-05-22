@@ -20,6 +20,7 @@ DistanceReadings distances;
 SimInputs simInputs;
 
 unsigned long lastSensorReadMs = 0;
+unsigned long lastOdometryUpdateMs = 0;
 unsigned long lastDebugMs = 0;
 
 enum class TestMode {
@@ -138,6 +139,11 @@ void runCompleteStrategy() {
         }
     }
 
+    if (ROBOT_MODE == MODE_REAL && now - lastOdometryUpdateMs >= ODOMETRY_PERIOD_MS) {
+        lastOdometryUpdateMs = now;
+        drive.updateOdometry();
+    }
+
     if (ROBOT_MODE == MODE_REAL) {
         strategy.update(safety, distances, drive, servos, actions);
     } else {
@@ -163,7 +169,21 @@ void runCompleteStrategy() {
             Serial.print("--");
         }
         Serial.print(" | Obstacle=");
-        Serial.println(distances.obstacle ? "YES" : "NO");
+        Serial.print(distances.obstacle ? "YES" : "NO");
+        if (ROBOT_MODE == MODE_REAL) {
+            const DriveOdometryPose& pose = drive.getPose();
+            Serial.print(" | Odo=");
+            Serial.print(drive.getTravelDistanceCm(), 1);
+            Serial.print("cm");
+            Serial.print(" | X=");
+            Serial.print(pose.xCm, 1);
+            Serial.print(" Y=");
+            Serial.print(pose.yCm, 1);
+            Serial.print(" Th=");
+            Serial.print(pose.thetaRad * 180.0f / PI, 1);
+            Serial.print("deg");
+        }
+        Serial.println();
     }
 }
 
@@ -227,6 +247,7 @@ void setup() {
     }
 
     lastSensorReadMs = millis();
+    lastOdometryUpdateMs = millis();
     lastDebugMs = millis();
 }
 

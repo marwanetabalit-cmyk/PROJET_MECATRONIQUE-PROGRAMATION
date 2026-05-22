@@ -46,10 +46,15 @@ public:
 private:
     RobotState state = RobotState::WAIT_START;
     RobotState stateBeforeAvoidance = RobotState::WAIT_START;
+    RobotState odometryReferenceState = RobotState::WAIT_START;
     unsigned long stateStartMs = 0;
     unsigned long matchStartMs = 0;
 
     void changeState(RobotState newState);
+    void resetOdometryOnStateEntry(RobotState trackedState, DriveBase& drive);
+    bool driveForwardForDistance(DriveBase& drive, float targetCm, unsigned long timeoutMs);
+    bool driveBackwardForDistance(DriveBase& drive, float targetCm, unsigned long timeoutMs);
+    bool rotateRightForAngle(DriveBase& drive, float targetDeg, unsigned long timeoutMs);
 
     void coreUpdate(bool startPressed,
                     bool eStopPressed,
