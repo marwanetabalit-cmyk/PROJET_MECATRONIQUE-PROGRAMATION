@@ -8,13 +8,11 @@
 
 enum class RobotState {
     WAIT_START,
-    GO_TO_BOX_ZONE,
-    PICK_BOX,
-    GO_TO_DROP_ZONE,
-    DROP_BOX,
-    GO_TO_THERMOMETER,
-    PUSH_CURSOR,
-    RETURN_TO_NEST,
+    SCENARIO_TRANSLATE,
+    SCENARIO_MANIP,
+    SCENARIO_ROTATION_PAUSE_BEFORE,
+    SCENARIO_ROTATE,
+    SCENARIO_ROTATION_PAUSE_AFTER,
     AVOID_OBSTACLE,
     EMERGENCY_STOP,
     END_MATCH
@@ -42,6 +40,8 @@ public:
                           ActionManager& actions);
 
     RobotState getState() const;
+    const char* getStateName() const;
+    uint8_t getCurrentStep() const;
 
 private:
     RobotState state = RobotState::WAIT_START;
@@ -49,12 +49,21 @@ private:
     RobotState odometryReferenceState = RobotState::WAIT_START;
     unsigned long stateStartMs = 0;
     unsigned long matchStartMs = 0;
+    uint8_t currentStep = 0;
 
     void changeState(RobotState newState);
     void resetOdometryOnStateEntry(RobotState trackedState, DriveBase& drive);
-    bool driveForwardForDistance(DriveBase& drive, float targetCm, unsigned long timeoutMs);
-    bool driveBackwardForDistance(DriveBase& drive, float targetCm, unsigned long timeoutMs);
-    bool rotateRightForAngle(DriveBase& drive, float targetDeg, unsigned long timeoutMs);
+    void startScenario(DriveBase& drive);
+    void advanceToNextStep();
+    void goToRotationOrNextStep();
+
+    bool driveForSignedDistance(DriveBase& drive, float targetCm);
+    bool rotateForAngle(DriveBase& drive, float targetDeg);
+    bool rotateRightForAvoidance(DriveBase& drive);
+    bool waitInState(unsigned long durationMs, DriveBase& drive);
+
+    unsigned long moveTimeoutForDistance(float distanceCm) const;
+    unsigned long rotationTimeoutForAngle(float angleDeg) const;
 
     void coreUpdate(bool startPressed,
                     bool eStopPressed,

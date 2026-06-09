@@ -56,8 +56,13 @@ void DriveBase::resetOdometry(float xCm, float yCm, float thetaRad) {
     pose.xCm = xCm;
     pose.yCm = yCm;
     pose.thetaRad = thetaRad;
+    resetTravelCounters();
+}
+
+void DriveBase::resetTravelCounters() {
     pose.signedDistanceCm = 0.0f;
     pose.totalDistanceCm = 0.0f;
+    pose.turnAngleRad = 0.0f;
     pose.leftTrackCm = 0.0f;
     pose.rightTrackCm = 0.0f;
 
@@ -92,6 +97,7 @@ void DriveBase::updateOdometry() {
     pose.thetaRad = normalizeRadians(pose.thetaRad + thetaDeltaRad);
     pose.signedDistanceCm += centerDeltaCm;
     pose.totalDistanceCm += fabsf(centerDeltaCm);
+    pose.turnAngleRad += thetaDeltaRad;
     pose.leftTrackCm += leftDeltaCm;
     pose.rightTrackCm += rightDeltaCm;
 }
@@ -109,7 +115,7 @@ float DriveBase::getSignedDistanceCm() const {
 }
 
 float DriveBase::getTurnAngleDeg() const {
-    return fabsf(pose.thetaRad) * 180.0f / kPi;
+    return fabsf(pose.turnAngleRad) * 180.0f / kPi;
 }
 
 void DriveBase::setVelocity(float leftRpm, float rightRpm) {

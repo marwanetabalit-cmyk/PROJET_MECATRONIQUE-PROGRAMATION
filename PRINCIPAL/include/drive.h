@@ -8,6 +8,7 @@ struct DriveOdometryPose {
     float thetaRad = 0.0f;
     float signedDistanceCm = 0.0f;
     float totalDistanceCm = 0.0f;
+    float turnAngleRad = 0.0f;
     float leftTrackCm = 0.0f;
     float rightTrackCm = 0.0f;
 };
@@ -26,6 +27,7 @@ public:
 
     void updateOdometry();
     void resetOdometry(float xCm = 0.0f, float yCm = 0.0f, float thetaRad = 0.0f);
+    void resetTravelCounters();
     const DriveOdometryPose& getPose() const;
     float getTravelDistanceCm() const;
     float getSignedDistanceCm() const;

@@ -6,5 +6,7 @@
         "ms-vscode.vscode-serial-monitor",
         "platformio.platformio-ide"
     ],
-    "unwantedRecommendations": []
+    "unwantedRecommendations": [
+        "ms-vscode.cpptools-extension-pack"
+    ]
 }

@@ -36,23 +36,6 @@ constexpr TestMode CURRENT_TEST = TestMode::COMPLETE_TEST;
 
 SimInputs generateSimulationScenario();
 
-static const char* stateToString(RobotState state) {
-    switch (state) {
-        case RobotState::WAIT_START:        return "WAIT_START";
-        case RobotState::GO_TO_BOX_ZONE:    return "GO_TO_BOX_ZONE";
-        case RobotState::PICK_BOX:          return "PICK_BOX";
-        case RobotState::GO_TO_DROP_ZONE:   return "GO_TO_DROP_ZONE";
-        case RobotState::DROP_BOX:          return "DROP_BOX";
-        case RobotState::GO_TO_THERMOMETER: return "GO_TO_THERMOMETER";
-        case RobotState::PUSH_CURSOR:       return "PUSH_CURSOR";
-        case RobotState::RETURN_TO_NEST:    return "RETURN_TO_NEST";
-        case RobotState::AVOID_OBSTACLE:    return "AVOID_OBSTACLE";
-        case RobotState::EMERGENCY_STOP:    return "EMERGENCY_STOP";
-        case RobotState::END_MATCH:         return "END_MATCH";
-        default:                            return "UNKNOWN";
-    }
-}
-
 void testSafety() {
     Serial.print("[SAFETY] Start=");
     Serial.print(safety.isStartPressed() ? "ON" : "OFF");
@@ -156,7 +139,9 @@ void runCompleteStrategy() {
         Serial.print("[");
         Serial.print(now / 1000);
         Serial.print("s] Etat=");
-        Serial.print(stateToString(strategy.getState()));
+        Serial.print(strategy.getStateName());
+        Serial.print(" | Step=");
+        Serial.print(strategy.getCurrentStep() + 1);
         Serial.print(" | Start=");
         Serial.print(simInputs.startPressed ? "ON" : "OFF");
         Serial.print(" | EStop=");
@@ -171,7 +156,7 @@ void runCompleteStrategy() {
         Serial.print(" | Obstacle=");
         Serial.print(distances.obstacle ? "YES" : "NO");
         if (ROBOT_MODE == MODE_REAL) {
-            const DriveOdometryPose& pose = drive.getPose();
+            const auto& pose = drive.getPose();
             Serial.print(" | Odo=");
             Serial.print(drive.getTravelDistanceCm(), 1);
             Serial.print("cm");
@@ -180,7 +165,7 @@ void runCompleteStrategy() {
             Serial.print(" Y=");
             Serial.print(pose.yCm, 1);
             Serial.print(" Th=");
-            Serial.print(pose.thetaRad * 180.0f / PI, 1);
+            Serial.print(pose.thetaRad * 57.2957795f, 1);
             Serial.print("deg");
         }
         Serial.println();

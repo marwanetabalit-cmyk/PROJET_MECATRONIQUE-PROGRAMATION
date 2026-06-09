@@ -50,8 +50,8 @@ constexpr float DXL_PROTOCOL_VERSION = 2.0f;
 constexpr bool LEFT_MOTOR_INVERTED  = false;
 constexpr bool RIGHT_MOTOR_INVERTED = true;
 
-constexpr float DRIVE_FORWARD_RPM = 30.0f;
-constexpr float DRIVE_TURN_RPM    = 20.0f;
+constexpr float DRIVE_FORWARD_RPM = 57.0f;
+constexpr float DRIVE_TURN_RPM    = 57.0f;
 
 // =========================
 // ODOMETRIE CHENILLES
@@ -66,7 +66,7 @@ constexpr float TRACK_CM_PER_REV = TRACK_PITCH_CM * TRACK_SPROCKET_TEETH;
 
 // Distance entre les axes moyens des deux chenilles.
 // A mesurer sur le robot, puis a calibrer en rotation.
-constexpr float TRACK_BASE_CM = 25.0f;
+constexpr float TRACK_BASE_CM = 21.0f;
 
 // Les chenilles glissent en rotation: ajuster apres essais reels.
 // Si le robot tourne trop peu, augmenter. S'il tourne trop, diminuer.
@@ -74,17 +74,16 @@ constexpr float TRACK_TURN_CORRECTION = 1.0f;
 
 constexpr unsigned long ODOMETRY_PERIOD_MS = 50;
 
-// Distances de strategie. Les valeurs ci-dessous reprennent grossierement les
-// anciens deplacements temporises avec DRIVE_FORWARD_RPM = 30 rpm.
-constexpr float DIST_TO_BOX_ZONE_CM = 11.0f;
-constexpr float DIST_TO_DROP_ZONE_CM = 11.0f;
-constexpr float DIST_TO_THERMOMETER_CM = 8.0f;
-constexpr float DIST_RETURN_TO_NEST_CM = 27.0f;
+// Trajectoire issue de init_robot_demo.m / params_simscape_robot.m.
+constexpr float STRATEGY_START_X_CM = 22.5f;
+constexpr float STRATEGY_START_Y_CM = 170.0f;
+constexpr float STRATEGY_START_THETA_RAD = -1.57079632679f;
 
-constexpr unsigned long MOVE_TO_BOX_TIMEOUT_MS = 5000;
-constexpr unsigned long MOVE_TO_DROP_TIMEOUT_MS = 5000;
-constexpr unsigned long MOVE_TO_THERMOMETER_TIMEOUT_MS = 4000;
-constexpr unsigned long RETURN_TO_NEST_TIMEOUT_MS = 8000;
+constexpr float STRATEGY_LINEAR_SPEED_CM_S = 10.0f;
+constexpr unsigned long STRATEGY_ROTATION_90_MS = 1500;
+constexpr unsigned long STRATEGY_ROTATION_PAUSE_MS = 500;
+constexpr unsigned long STRATEGY_MOVE_TIMEOUT_MARGIN_MS = 2000;
+constexpr unsigned long STRATEGY_ROTATION_TIMEOUT_MARGIN_MS = 1000;
 
 // =========================
 // SERVOS CLASSIQUES
