@@ -15,7 +15,6 @@ DriveBase drive(DXLSerial);
 ServoController servos;
 ActionManager actions;
 StrategyManager strategy;
-
 DistanceReadings distances;
 SimInputs simInputs;
 
