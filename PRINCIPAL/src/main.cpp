@@ -32,7 +32,7 @@ enum class TestMode {
     COMPLETE_TEST
 };
 
-constexpr TestMode CURRENT_TEST = TestMode::ODOMETRY_TEST;
+constexpr TestMode CURRENT_TEST = TestMode::COMPLETE_TEST;
 
 enum class OdometryTestState {
     WAIT_START,

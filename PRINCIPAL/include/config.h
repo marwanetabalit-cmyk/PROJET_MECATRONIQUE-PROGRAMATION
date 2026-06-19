@@ -47,8 +47,8 @@ constexpr uint8_t DXL_RIGHT_ID = 2;
 constexpr uint32_t DXL_BAUDRATE = 57600;
 constexpr float DXL_PROTOCOL_VERSION = 2.0f;
 
-constexpr bool LEFT_MOTOR_INVERTED  = false;
-constexpr bool RIGHT_MOTOR_INVERTED = true;
+constexpr bool LEFT_MOTOR_INVERTED  = true;
+constexpr bool RIGHT_MOTOR_INVERTED = false;
 
 constexpr float DRIVE_FORWARD_RPM = 57.0f;
 constexpr float DRIVE_TURN_RPM    = 57.0f;
