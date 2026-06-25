@@ -6,8 +6,10 @@
 // ============================================================================
 
 void SafetySystem::init() {
-    // Configurer le bouton de départ
-    // INPUT_PULLUP signifie: pullup interne activé, LOW = pressé, HIGH = non-pressé
+    // Configurer la tirette de depart
+    // Tirette entre GPIO26 et GND:
+    // - tirette en place/contact ouvert -> HIGH grace au pullup interne
+    // - tirette retiree/contact ferme vers GND -> LOW
     pinMode(PIN_START_SWITCH, INPUT_PULLUP);
 
     // Configurer l'arrêt d'urgence (E-Stop)
@@ -19,10 +21,10 @@ void SafetySystem::init() {
 // LECTURE DES SIGNAUX DE SÉCURITÉ
 // ============================================================================
 
-/// Teste si le bouton de départ a été pressé
-/// @return true si le bouton est enfoncé (logique inversée: active bas)
+/// Teste si la tirette de depart a ete activee
+/// @return true si la tirette est retiree
 bool SafetySystem::isStartPressed() const {
-    return digitalRead(PIN_START_SWITCH) == LOW;  // Actif bas (logique inversée)
+    return digitalRead(PIN_START_SWITCH) == LOW;  // Actif bas quand le contact GND se ferme
 }
 
 /// Teste si l'arrêt d'urgence a été activé

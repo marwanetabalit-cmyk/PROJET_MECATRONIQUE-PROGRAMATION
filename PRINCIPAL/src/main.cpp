@@ -29,10 +29,11 @@ enum class TestMode {
     MOTOR_TEST,
     ODOMETRY_TEST,
     STRATEGY_TEST,
-    COMPLETE_TEST
+    COMPLETE_TEST,
+    DAY_J_TEST
 };
 
-constexpr TestMode CURRENT_TEST = TestMode::COMPLETE_TEST;
+constexpr TestMode CURRENT_TEST = TestMode::DAY_J_TEST;
 
 enum class OdometryTestState {
     WAIT_START,
@@ -56,8 +57,40 @@ constexpr unsigned long ODOMETRY_TEST_TURN_TIMEOUT_MS = 12000;
 OdometryTestState odometryTestState = OdometryTestState::WAIT_START;
 unsigned long odometryTestStateStartMs = 0;
 
+enum class DayJState {
+    WAIT_START,
+    PREPARE_PUSH,
+    PUSH_BOXES,
+    PAUSE_AFTER_PUSH,
+    BACK_UP,
+    PAUSE_BEFORE_RETURN,
+    RETURN_BASE,
+    DONE,
+    EMERGENCY_STOP
+};
+
+constexpr float DAY_J_PUSH_DISTANCE_CM = 65.0f;
+constexpr float DAY_J_BACK_DISTANCE_CM = 25.0f;
+constexpr float DAY_J_RETURN_DISTANCE_CM = 35.0f;
+constexpr float DAY_J_PUSH_RPM = 35.0f;
+constexpr float DAY_J_BACK_RPM = 30.0f;
+constexpr float DAY_J_RETURN_RPM = 35.0f;
+constexpr unsigned long DAY_J_PREPARE_MS = 1200;
+constexpr unsigned long DAY_J_PAUSE_MS = 600;
+constexpr unsigned long DAY_J_PUSH_MIN_MS = 6000;
+constexpr unsigned long DAY_J_BACK_MIN_MS = 6000;
+constexpr unsigned long DAY_J_PUSH_TIMEOUT_MS = 20000;
+constexpr unsigned long DAY_J_BACK_TIMEOUT_MS = 16000;
+constexpr unsigned long DAY_J_RETURN_TIMEOUT_MS = 10000;
+
+DayJState dayJState = DayJState::WAIT_START;
+unsigned long dayJStateStartMs = 0;
+bool dayJObstacleBlocked = false;
+unsigned long dayJObstacleBlockStartMs = 0;
+
 SimInputs generateSimulationScenario();
 void runOdometryTest();
+void runDayJTest();
 void updateOdometryPeriodic(unsigned long now);
 void printOdometryStatus(const char* label);
 
@@ -96,24 +129,33 @@ void testUltrasonic() {
 }
 
 void testServo() {
-    Serial.println("[SERVO] Sequence complete");
-    servos.splitOpen();
-    delay(500);
+    constexpr unsigned long gripMoveDelayMs = 2500;
+    constexpr unsigned long splitMoveDelayMs = 1500;
+
+    Serial.println("[SERVO] Test reel fendage, prise, depose");
+
+    Serial.println("[SERVO] Preparation: pince ouverte, fendage au repos");
     servos.gripOpen();
-    delay(400);
-    servos.liftDown();
-    delay(600);
-    servos.gripClose();
-    delay(700);
-    servos.liftUp();
-    delay(700);
+    servos.splitOpen();
+    delay(splitMoveDelayMs);
+
+    Serial.println("[SERVO] Fendage des caisses");
     servos.splitClose();
-    delay(400);
-    servos.cursorPush();
-    delay(600);
-    servos.cursorHome();
-    delay(600);
-    Serial.println("[SERVO] Termine");
+    delay(splitMoveDelayMs);
+
+    Serial.println("[SERVO] Remontee / retour du fendage");
+    servos.splitOpen();
+    delay(splitMoveDelayMs);
+
+    Serial.println("[SERVO] Fermeture pince pour prise");
+    servos.gripClose();
+    delay(gripMoveDelayMs);
+
+    Serial.println("[SERVO] Depose des caisses");
+    servos.gripOpen();
+    delay(gripMoveDelayMs);
+
+    Serial.println("[SERVO] Test reel termine");
 }
 
 void testMotor() {
@@ -280,6 +322,179 @@ void runOdometryTest() {
     }
 }
 
+static const char* dayJStateName(DayJState state) {
+    switch (state) {
+        case DayJState::WAIT_START:         return "WAIT_START";
+        case DayJState::PREPARE_PUSH:       return "PREPARE_PUSH";
+        case DayJState::PUSH_BOXES:         return "PUSH_BOXES";
+        case DayJState::PAUSE_AFTER_PUSH:   return "PAUSE_AFTER_PUSH";
+        case DayJState::BACK_UP:            return "BACK_UP";
+        case DayJState::PAUSE_BEFORE_RETURN:return "PAUSE_BEFORE_RETURN";
+        case DayJState::RETURN_BASE:        return "RETURN_BASE";
+        case DayJState::DONE:               return "DONE";
+        case DayJState::EMERGENCY_STOP:     return "EMERGENCY_STOP";
+        default:                            return "UNKNOWN";
+    }
+}
+
+void changeDayJState(DayJState newState, const char* label) {
+    dayJState = newState;
+    dayJStateStartMs = millis();
+    drive.resetTravelCounters();
+    dayJObstacleBlocked = false;
+    dayJObstacleBlockStartMs = 0;
+    Serial.print("[DAYJ] ");
+    Serial.println(label);
+}
+
+bool dayJStateUsesMotors(DayJState state) {
+    return state == DayJState::PUSH_BOXES ||
+           state == DayJState::BACK_UP ||
+           state == DayJState::RETURN_BASE;
+}
+
+void runDayJTest() {
+    unsigned long now = millis();
+    updateOdometryPeriodic(now);
+
+    if (now - lastSensorReadMs >= SENSOR_PERIOD_MS) {
+        lastSensorReadMs = now;
+        distances = ultrasons.readAll();
+    }
+
+    if (safety.isEStopPressed()) {
+        drive.stop();
+        dayJState = DayJState::EMERGENCY_STOP;
+    }
+
+    if (dayJStateUsesMotors(dayJState) && distances.obstacle) {
+        drive.stop();
+
+        if (!dayJObstacleBlocked) {
+            dayJObstacleBlocked = true;
+            dayJObstacleBlockStartMs = now;
+            Serial.print("[DAYJ] Obstacle ultrason -> moteurs bloques");
+            if (distances.front > 0.0f) {
+                Serial.print(" | front=");
+                Serial.print(distances.front, 1);
+                Serial.print("cm");
+            }
+            Serial.println();
+        }
+        return;
+    }
+
+    if (dayJObstacleBlocked) {
+        unsigned long blockedMs = now - dayJObstacleBlockStartMs;
+        dayJStateStartMs += blockedMs;
+        dayJObstacleBlocked = false;
+        dayJObstacleBlockStartMs = 0;
+        Serial.println("[DAYJ] Obstacle disparu -> reprise");
+    }
+
+    if (now - lastDebugMs >= DEBUG_PERIOD_MS) {
+        lastDebugMs = now;
+        Serial.print("[DAYJ] Etat=");
+        Serial.print(dayJStateName(dayJState));
+        Serial.print(" | Dist=");
+        Serial.print(drive.getTravelDistanceCm(), 1);
+        Serial.print("cm | Turn=");
+        Serial.print(drive.getTurnAngleDeg(), 1);
+        Serial.print("deg | Front=");
+        if (distances.front > 0.0f) {
+            Serial.print(distances.front, 1);
+            Serial.print("cm");
+        } else {
+            Serial.print("--");
+        }
+        Serial.print(" | Obstacle=");
+        Serial.print(distances.obstacle ? "YES" : "NO");
+        Serial.println();
+    }
+
+    unsigned long elapsed = now - dayJStateStartMs;
+
+    switch (dayJState) {
+        case DayJState::WAIT_START:
+            drive.stop();
+            if (safety.isStartPressed() || AUTO_START_WITHOUT_BUTTON) {
+                servos.liftDown();
+                servos.gripClose();
+                servos.splitOpen();
+                drive.resetOdometry(0.0f, 0.0f, 0.0f);
+                changeDayJState(DayJState::PREPARE_PUSH, "START -> pinces basses");
+            }
+            break;
+
+        case DayJState::PREPARE_PUSH:
+            drive.stop();
+            servos.liftDown();
+            servos.gripClose();
+            if (elapsed >= DAY_J_PREPARE_MS) {
+                changeDayJState(DayJState::PUSH_BOXES, "poussee des premieres caisses");
+            }
+            break;
+
+        case DayJState::PUSH_BOXES:
+            servos.liftDown();
+            servos.gripClose();
+            if ((elapsed >= DAY_J_PUSH_MIN_MS &&
+                 drive.getTravelDistanceCm() >= DAY_J_PUSH_DISTANCE_CM) ||
+                elapsed >= DAY_J_PUSH_TIMEOUT_MS) {
+                drive.stop();
+                changeDayJState(DayJState::PAUSE_AFTER_PUSH, "poussee terminee");
+            } else {
+                drive.forward(DAY_J_PUSH_RPM);
+            }
+            break;
+
+        case DayJState::PAUSE_AFTER_PUSH:
+            drive.stop();
+            if (elapsed >= DAY_J_PAUSE_MS) {
+                changeDayJState(DayJState::BACK_UP, "recul");
+            }
+            break;
+
+        case DayJState::BACK_UP:
+            servos.liftDown();
+            servos.gripClose();
+            if ((elapsed >= DAY_J_BACK_MIN_MS &&
+                 drive.getTravelDistanceCm() >= DAY_J_BACK_DISTANCE_CM) ||
+                elapsed >= DAY_J_BACK_TIMEOUT_MS) {
+                drive.stop();
+                changeDayJState(DayJState::PAUSE_BEFORE_RETURN, "recul termine");
+            } else {
+                drive.backward(DAY_J_BACK_RPM);
+            }
+            break;
+
+        case DayJState::PAUSE_BEFORE_RETURN:
+            drive.stop();
+            if (elapsed >= DAY_J_PAUSE_MS) {
+                servos.gripOpen();
+                changeDayJState(DayJState::RETURN_BASE, "retour base");
+            }
+            break;
+
+        case DayJState::RETURN_BASE:
+            servos.liftDown();
+            servos.gripOpen();
+            if (drive.getTravelDistanceCm() >= DAY_J_RETURN_DISTANCE_CM ||
+                elapsed >= DAY_J_RETURN_TIMEOUT_MS) {
+                drive.stop();
+                changeDayJState(DayJState::DONE, "sequence terminee");
+            } else {
+                drive.backward(DAY_J_RETURN_RPM);
+            }
+            break;
+
+        case DayJState::DONE:
+        case DayJState::EMERGENCY_STOP:
+            drive.stop();
+            break;
+    }
+}
+
 void runCompleteStrategy() {
     unsigned long now = millis();
 
@@ -411,6 +626,13 @@ void setup() {
         case TestMode::COMPLETE_TEST:
             Serial.println("Mode: COMPLETE_TEST");
             break;
+        case TestMode::DAY_J_TEST:
+            Serial.println("Mode: DAY_J_TEST");
+            Serial.println("[DAYJ] Sequence: pousser, reculer, retour base");
+            dayJState = DayJState::WAIT_START;
+            dayJStateStartMs = millis();
+            drive.resetOdometry(0.0f, 0.0f, 0.0f);
+            break;
     }
 
     lastSensorReadMs = millis();
@@ -439,6 +661,10 @@ void loop() {
             break;
         case TestMode::COMPLETE_TEST:
             runCompleteStrategy();
+            delay(20);
+            break;
+        case TestMode::DAY_J_TEST:
+            runDayJTest();
             delay(20);
             break;
     }

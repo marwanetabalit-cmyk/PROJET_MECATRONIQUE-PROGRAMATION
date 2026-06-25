@@ -1,25 +1,29 @@
 #include "ultrasons.h"
 #include "config.h"
 
+static bool isUltrasonicPinEnabled(uint8_t pin) {
+    return pin != ULTRASON_PIN_UNUSED;
+}
+
 // ============================================================================
 // INITIALISATION
 // ============================================================================
 
 void UltrasonicArray::init() {
     // Configure les pins Trig en sortie (envoient les impulsions)
-    pinMode(US_FRONT_TRIG, OUTPUT);
-    pinMode(US_LEFT_TRIG, OUTPUT);
-    pinMode(US_RIGHT_TRIG, OUTPUT);
+    if (isUltrasonicPinEnabled(US_FRONT_TRIG)) pinMode(US_FRONT_TRIG, OUTPUT);
+    if (isUltrasonicPinEnabled(US_LEFT_TRIG)) pinMode(US_LEFT_TRIG, OUTPUT);
+    if (isUltrasonicPinEnabled(US_RIGHT_TRIG)) pinMode(US_RIGHT_TRIG, OUTPUT);
 
     // Configure les pins Echo en entrée (reçoivent les échos)
-    pinMode(US_FRONT_ECHO, INPUT);
-    pinMode(US_LEFT_ECHO, INPUT);
-    pinMode(US_RIGHT_ECHO, INPUT);
+    if (isUltrasonicPinEnabled(US_FRONT_ECHO)) pinMode(US_FRONT_ECHO, INPUT);
+    if (isUltrasonicPinEnabled(US_LEFT_ECHO)) pinMode(US_LEFT_ECHO, INPUT);
+    if (isUltrasonicPinEnabled(US_RIGHT_ECHO)) pinMode(US_RIGHT_ECHO, INPUT);
 
     // Initialise les pins Trig en LOW (pas d'impulsion)
-    digitalWrite(US_FRONT_TRIG, LOW);
-    digitalWrite(US_LEFT_TRIG, LOW);
-    digitalWrite(US_RIGHT_TRIG, LOW);
+    if (isUltrasonicPinEnabled(US_FRONT_TRIG)) digitalWrite(US_FRONT_TRIG, LOW);
+    if (isUltrasonicPinEnabled(US_LEFT_TRIG)) digitalWrite(US_LEFT_TRIG, LOW);
+    if (isUltrasonicPinEnabled(US_RIGHT_TRIG)) digitalWrite(US_RIGHT_TRIG, LOW);
 
     nextRead = ReadState::FRONT;
     lastReadMs = millis();
@@ -30,6 +34,10 @@ void UltrasonicArray::init() {
 // ============================================================================
 
 float UltrasonicArray::readOne(uint8_t trigPin, uint8_t echoPin) {
+    if (!isUltrasonicPinEnabled(trigPin) || !isUltrasonicPinEnabled(echoPin)) {
+        return -1.0f;
+    }
+
     // Étape 1: Préparer l'impulsion (Trig bas pendant 2µs)
     digitalWrite(trigPin, LOW);
     delayMicroseconds(2);

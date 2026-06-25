@@ -12,6 +12,7 @@ enum class ActionResult {
 /// État interne d'une action multi-étape
 enum class ActionState {
     IDLE,           ///< Aucune action en cours
+    WAIT,           ///< Pause sans nouvelle commande servo
     SPLIT_OPEN,     ///< Étape: ouvrir le séparateur
     SPLIT_CLOSE,    ///< Étape: fermer le séparateur
     GRIP_OPEN,      ///< Étape: ouvrir la pince
@@ -67,9 +68,10 @@ private:
     
     /// Timestamp du début de l'étape actuelle
     unsigned long stateStartMs = 0;
+    uint8_t currentStepIndex = 0;
     
     /// Durée maximale d'une étape (timeout)
-    static constexpr unsigned long ACTION_STEP_TIMEOUT_MS = 1500;
+    static constexpr unsigned long ACTION_STEP_TIMEOUT_MS = 4000;
 
     /// Dirige l'exécution d'une action étape par étape (machine à états interne)
     /// @param servos Contrôleur de servos

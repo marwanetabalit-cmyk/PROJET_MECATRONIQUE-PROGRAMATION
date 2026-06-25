@@ -8,6 +8,7 @@ void ActionManager::init() {
     Serial.println("[ACTION] ActionManager initialise");
     currentAction = ActionState::IDLE;
     stateStartMs = 0;
+    currentStepIndex = 0;
 }
 
 void ActionManager::logAction(const char* message) {
@@ -22,6 +23,7 @@ bool ActionManager::isActionInProgress() const {
 void ActionManager::resetAction() {
     currentAction = ActionState::IDLE;
     stateStartMs = 0;
+    currentStepIndex = 0;
 }
 
 // ============================================================================
@@ -38,6 +40,7 @@ ActionResult ActionManager::executeStepByStep(ServoController& servos,
 
     // Première invocation: initialiser l'action
     if (currentAction == ActionState::IDLE) {
+        currentStepIndex = 0;
         currentAction = steps[0];
         stateStartMs = millis();
         logAction("Action demarree");
@@ -50,27 +53,24 @@ ActionResult ActionManager::executeStepByStep(ServoController& servos,
     if (elapsed > ACTION_STEP_TIMEOUT_MS) {
         logAction("Action timeout - ECHEC");
         currentAction = ActionState::IDLE;
+        currentStepIndex = 0;
         return ActionResult::FAILED;
     }
 
     // Déterminer l'étape actuelle et exécuter la commande servo
-    uint8_t stepIndex = stepCount;
-    for (uint8_t i = 0; i < stepCount; ++i) {
-        if (currentAction == steps[i]) {
-            stepIndex = i;
-            break;
-        }
-    }
+    uint8_t stepIndex = currentStepIndex;
 
     if (stepIndex >= stepCount) {
         logAction("Action invalide - ECHEC");
         currentAction = ActionState::IDLE;
+        currentStepIndex = 0;
         return ActionResult::FAILED;
     }
 
     if (stepIndex < stepCount) {
         // Commander le servo correspondant à l'étape actuelle
         switch (currentAction) {
+            case ActionState::WAIT:         break;
             case ActionState::SPLIT_OPEN:   servos.splitOpen(); break;
             case ActionState::SPLIT_CLOSE:  servos.splitClose(); break;
             case ActionState::GRIP_OPEN:    servos.gripOpen(); break;
@@ -88,11 +88,13 @@ ActionResult ActionManager::executeStepByStep(ServoController& servos,
             if (stepIndex + 1 >= stepCount) {
                 logAction("Action terminee");
                 currentAction = ActionState::IDLE;
+                currentStepIndex = 0;
                 return ActionResult::DONE;
             }
 
             // Passer à l'étape suivante
-            currentAction = steps[stepIndex + 1];
+            currentStepIndex = stepIndex + 1;
+            currentAction = steps[currentStepIndex];
             stateStartMs = millis();
         }
     }
@@ -138,43 +140,48 @@ ActionResult ActionManager::liftBox(ServoController& servos) {
 }
 
 ActionResult ActionManager::pickBox(ServoController& servos) {
-    // Séquence complète de prélèvement:
-    // 1. Ouvrir séparateur (500ms)
-    // 2. Ouvrir pince (400ms)
-    // 3. Baisser bras (600ms)
-    // 4. Fermer pince (700ms)
-    // 5. Lever bras (700ms)
-    // 6. Fermer séparateur (400ms)
+    // Sequence reelle de prise:
+    // 1. Fendre les caisses
+    // 2. Relever le fendage
+    // 3. Descendre le mecanisme
+    // 4. Fermer la pince pour recuperer les caisses
+    // 5. Remonter le mecanisme
     static const ActionState steps[] = {
-        ActionState::SPLIT_OPEN,
         ActionState::GRIP_OPEN,
+        ActionState::SPLIT_CLOSE,
+        ActionState::WAIT,
+        ActionState::SPLIT_OPEN,
+        ActionState::WAIT,
         ActionState::LIFT_DOWN,
+        ActionState::WAIT,
         ActionState::GRIP_CLOSE,
-        ActionState::LIFT_UP,
-        ActionState::SPLIT_CLOSE
+        ActionState::WAIT,
+        ActionState::LIFT_UP
     };
-    static const unsigned long stepDurations[] = {500, 400, 600, 700, 700, 400};
+    static const unsigned long stepDurations[] = {1500, 300, 1500, 500, 1000, 300, 2500, 300, 800};
     return executeStepByStep(servos,
                               steps,
                               stepDurations,
-                              6);
+                              9);
 }
 
 ActionResult ActionManager::dropBox(ServoController& servos) {
-    // Séquence de déposition:
-    // 1. Baisser bras (700ms)
-    // 2. Ouvrir pince (600ms)
-    // 3. Lever bras (500ms)
+    // Sequence reelle de depose:
+    // 1. Descendre le mecanisme
+    // 2. Ouvrir la pince
+    // 3. Remonter le mecanisme
     static const ActionState steps[] = {
         ActionState::LIFT_DOWN,
+        ActionState::WAIT,
         ActionState::GRIP_OPEN,
+        ActionState::WAIT,
         ActionState::LIFT_UP
     };
-    static const unsigned long stepDurations[] = {700, 600, 500};
+    static const unsigned long stepDurations[] = {1000, 300, 2500, 300, 800};
     return executeStepByStep(servos,
                               steps,
                               stepDurations,
-                              3);
+                              5);
 }
 
 ActionResult ActionManager::pushCursor(ServoController& servos) {

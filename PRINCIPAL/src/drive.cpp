@@ -119,8 +119,8 @@ float DriveBase::getTurnAngleDeg() const {
 }
 
 void DriveBase::setVelocity(float leftRpm, float rightRpm) {
-    float leftCmd = applyMotorSign(leftRpm, LEFT_MOTOR_INVERTED);
-    float rightCmd = applyMotorSign(rightRpm, RIGHT_MOTOR_INVERTED);
+    float leftCmd = applyMotorSign(leftRpm * LEFT_MOTOR_SPEED_SCALE, LEFT_MOTOR_INVERTED);
+    float rightCmd = applyMotorSign(rightRpm * RIGHT_MOTOR_SPEED_SCALE, RIGHT_MOTOR_INVERTED);
 
     dxl.setGoalVelocity(DXL_LEFT_ID, leftCmd, kDxlUnitRpm);
     dxl.setGoalVelocity(DXL_RIGHT_ID, rightCmd, kDxlUnitRpm);

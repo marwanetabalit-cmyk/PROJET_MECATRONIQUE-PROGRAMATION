@@ -12,24 +12,26 @@ constexpr int ROBOT_MODE = MODE_REAL;
 // =========================
 // BROCHES GENERALES
 // =========================
-constexpr uint8_t PIN_START_SWITCH = 27;   // microrupteur de départ
+constexpr uint8_t PIN_START_SWITCH = 26;   // tirette depart, pullup interne, retrait = LOW
 constexpr uint8_t PIN_ESTOP        = 14;   // arrêt d'urgence logique
 
 // Mettre a false quand le bouton start sera cable.
-constexpr bool AUTO_START_WITHOUT_BUTTON = true;
+constexpr bool AUTO_START_WITHOUT_BUTTON = false;
 
 // =========================
 // ULTRASONS
 // Echo -> à adapter vers 3.3V avant entrée ESP32
 // =========================
-constexpr uint8_t US_FRONT_TRIG = 33;   // J11 - Trig
-constexpr uint8_t US_FRONT_ECHO = 36;   // J11 - Echo, input only
+constexpr uint8_t ULTRASON_PIN_UNUSED = 255;
 
-constexpr uint8_t US_LEFT_TRIG  = 25;
-constexpr uint8_t US_LEFT_ECHO  = 39;   // input only
+constexpr uint8_t US_FRONT_TRIG = 33;   // Carte mere J12 - Trig
+constexpr uint8_t US_FRONT_ECHO = 34;   // Carte mere J13 - Echo, input only
 
-constexpr uint8_t US_RIGHT_TRIG = 26;
-constexpr uint8_t US_RIGHT_ECHO = 34;   // input only
+constexpr uint8_t US_LEFT_TRIG  = ULTRASON_PIN_UNUSED;
+constexpr uint8_t US_LEFT_ECHO  = ULTRASON_PIN_UNUSED;
+
+constexpr uint8_t US_RIGHT_TRIG = ULTRASON_PIN_UNUSED;
+constexpr uint8_t US_RIGHT_ECHO = ULTRASON_PIN_UNUSED;
 
 constexpr unsigned long ULTRASON_TIMEOUT_US = 30000;
 constexpr float SOUND_SPEED_CM_PER_US = 0.0343f;
@@ -49,6 +51,9 @@ constexpr float DXL_PROTOCOL_VERSION = 2.0f;
 
 constexpr bool LEFT_MOTOR_INVERTED  = true;
 constexpr bool RIGHT_MOTOR_INVERTED = false;
+
+constexpr float LEFT_MOTOR_SPEED_SCALE  = 1.00f;
+constexpr float RIGHT_MOTOR_SPEED_SCALE = 1.00f;
 
 constexpr float DRIVE_FORWARD_RPM = 57.0f;
 constexpr float DRIVE_TURN_RPM    = 57.0f;
@@ -95,12 +100,16 @@ constexpr uint8_t SERVO_CURSOR_PIN    = 22;
 
 constexpr int SERVO_MIN_US = 500;
 constexpr int SERVO_MAX_US = 2500;
+constexpr int GRIP_SERVO_MIN_US = 300;
+constexpr int GRIP_SERVO_MAX_US = 2500;
 
 constexpr int LIFT_DOWN_ANGLE   = 20;
 constexpr int LIFT_UP_ANGLE     = 110;
 
-constexpr int GRIP_OPEN_ANGLE   = 30;
-constexpr int GRIP_CLOSE_ANGLE  = 100;
+constexpr int GRIP_OPEN_ANGLE   = 155;
+constexpr int GRIP_CLOSE_ANGLE  = 0;
+constexpr int GRIP_OPEN_US      = 2000;
+constexpr int GRIP_CLOSE_US     = 300;
 
 constexpr int SPLIT_OPEN_ANGLE  = 25;
 constexpr int SPLIT_CLOSE_ANGLE = 95;

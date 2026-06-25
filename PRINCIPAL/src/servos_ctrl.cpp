@@ -15,7 +15,7 @@ void ServoController::init() {
     // Attacher chaque servo à sa pin GPIO avec plage PWM configurée
     // Plage: 500µs (position min) à 2500µs (position max)
     servoLift.attach(SERVO_LIFT_PIN, SERVO_MIN_US, SERVO_MAX_US);
-    servoGrip.attach(SERVO_GRIP_PIN, SERVO_MIN_US, SERVO_MAX_US);
+    servoGrip.attach(SERVO_GRIP_PIN, GRIP_SERVO_MIN_US, GRIP_SERVO_MAX_US);
     servoSplit.attach(SERVO_SPLIT_PIN, SERVO_MIN_US, SERVO_MAX_US);
     servoCursor.attach(SERVO_CURSOR_PIN, SERVO_MIN_US, SERVO_MAX_US);
 
@@ -46,12 +46,12 @@ void ServoController::liftUp() {
 
 /// Ouvrir la pince (relâcher la boîte)
 void ServoController::gripOpen() {
-    servoGrip.write(GRIP_OPEN_ANGLE);   // Angle d'ouverture (grand)
+    servoGrip.writeMicroseconds(GRIP_OPEN_US);
 }
 
 /// Fermer la pince (saisir la boîte)
 void ServoController::gripClose() {
-    servoGrip.write(GRIP_CLOSE_ANGLE);  // Angle de fermeture (petit)
+    servoGrip.writeMicroseconds(GRIP_CLOSE_US);
 }
 
 // ============================================================================
@@ -89,39 +89,25 @@ void ServoController::cursorPush() {
 /// Exécute une démonstration complète de tous les servos
 /// ATTENTION: Cette fonction est BLOQUANTE (utilise delay)
 void ServoController::demoSequence() {
-    Serial.println("[SERVO] Démo séquence commence");
+    Serial.println("[SERVO] Test pince commence");
 
-    // Phase 1: Ouvrir séparateur
-    splitOpen();
-    delay(500);
+    for (int cycle = 1; cycle <= 4; ++cycle) {
+        Serial.print("[SERVO] Cycle pince ");
+        Serial.print(cycle);
+        Serial.println("/4 - ouverture");
+        gripOpen();
+        delay(1200);
 
-    // Phase 2: Ouvrir pince
+        Serial.print("[SERVO] Cycle pince ");
+        Serial.print(cycle);
+        Serial.println("/4 - fermeture");
+        gripClose();
+        delay(1200);
+    }
+
+    Serial.println("[SERVO] Pince ouverte finale");
     gripOpen();
-    delay(500);
+    delay(1200);
 
-    // Phase 3: Baisser bras
-    liftDown();
-    delay(500);
-
-    // Phase 4: Fermer pince (saisir)
-    gripClose();
-    delay(700);
-
-    // Phase 5: Lever bras (soulever boîte)
-    liftUp();
-    delay(700);
-
-    // Phase 6: Fermer séparateur
-    splitClose();
-    delay(500);
-
-    // Phase 7: Pousser curseur
-    cursorPush();
-    delay(600);
-
-    // Phase 8: Ramener curseur
-    cursorHome();
-    delay(600);
-
-    Serial.println("[SERVO] Démo séquence terminée");
+    Serial.println("[SERVO] Test pince termine");
 }
